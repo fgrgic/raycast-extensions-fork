@@ -1,5 +1,27 @@
 # Can I Use Changelog
 
+## [Windows Support] - 2026-01-21
+
+- Add Windows support
+- Modernize extension to use latest Raycast config
+- Update `metadata` images to reflect updated UI
+
+## [Updates] - 2025-11-17
+
+- Update navigation title
+
+## [Updates] - 2024-04-11
+
+- Update the Can I Use package to the latest version
+- Update (dev)dependencies
+
+## [Improvements] - 2022-07-30
+
+- Add option to Show release date
+- Add option to Show partial support details
+- Add option for Brief Mode
+- Add option for Default Query
+
 ## [Update dependencies] - 2022-04-06
 
 - Update Raycast and Can I Use packages

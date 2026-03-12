@@ -1,11 +1,12 @@
-import { Action, ActionPanel, closeMainWindow, Icon, List, showToast, Toast, useNavigation } from "@raycast/api";
+import { Action, Icon, ActionPanel, closeMainWindow, List, showToast, Toast, useNavigation } from "@raycast/api";
 import { flow, pipe } from "fp-ts/lib/function";
+import * as A from "fp-ts/ReadonlyNonEmptyArray";
 import * as TE from "fp-ts/TaskEither";
 import { useEffect, useState } from "react";
+
 import { Playlist } from "./util/models";
 import { parseResult } from "./util/parser";
 import * as music from "./util/scripts";
-import * as A from "fp-ts/ReadonlyNonEmptyArray";
 
 enum PlaylistKind {
   ALL = "all",
@@ -43,9 +44,9 @@ export default function PlaySelected() {
         flow(
           parseResult<Playlist>(),
           (data) => A.groupBy<Playlist>((playlist) => playlist.kind?.split(" ")?.[0] ?? "Other")(data),
-          setPlaylists
-        )
-      )
+          setPlaylists,
+        ),
+      ),
     )();
   }, [playlistKind]);
 
@@ -73,8 +74,10 @@ export default function PlaySelected() {
             {data.map((playlist) => (
               <List.Item
                 key={playlist.id}
-                title={playlist.name}
-                accessoryTitle={`🎧 ${playlist.count}  ⏱ ${Math.floor(Number(playlist.duration) / 60)} min`}
+                title={playlist.name ?? "Unknown Playlist"}
+                accessories={[
+                  { text: `${playlist.count} songs ·` + ` ${Math.floor(Number(playlist.duration) / 60)} min` },
+                ]}
                 icon={{ source: "../assets/icon.png" }}
                 actions={<Actions playlist={playlist} pop={pop} />}
               />
@@ -91,23 +94,24 @@ interface ActionsProps {
 }
 
 function Actions({ playlist: { name, id }, pop }: ActionsProps) {
-  const title = `Start Playlist "${name}"`;
+  const title1 = `Start Playlist "${name}"`;
+  const title2 = `Shuffle Playlist "${name}"`;
 
   const handleSubmit = (shuffle?: boolean) => async () => {
     await pipe(
       id,
       music.playlists.playById(shuffle),
       TE.map(() => closeMainWindow()),
-      TE.mapLeft(() => showToast(Toast.Style.Failure, "Could not play this playlist"))
+      TE.mapLeft(() => showToast(Toast.Style.Failure, "Could not play this playlist")),
     )();
 
     pop();
   };
 
   return (
-    <ActionPanel title={title}>
-      <Action title={title} onAction={handleSubmit(false)} />
-      <Action title={`Shuffle Playlist "${name}"`} onAction={handleSubmit(true)} />
+    <ActionPanel title={title1}>
+      <Action title={title1} onAction={handleSubmit(false)} icon={Icon.Play} />
+      <Action title={title2} onAction={handleSubmit(true)} icon={Icon.Shuffle} />
     </ActionPanel>
   );
 }

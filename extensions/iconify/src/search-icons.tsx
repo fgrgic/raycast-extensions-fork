@@ -1,61 +1,64 @@
-import { Action, ActionPanel, Color, List } from '@raycast/api';
-import { useState } from 'react';
+import { Color, Grid, getPreferenceValues, LaunchProps } from "@raycast/api";
+import { useState } from "react";
 
-import Service, { Icon } from './service';
-import { toBase64, toSvg } from './utils';
+import { toDataURI, toSvg } from "./utils";
+import { iconColorEnum, Preferences, type LaunchContext } from "./types";
+import { useQueryIcons } from "./hooks/use-query-icons";
+import { IconActions } from "./components/IconActions";
+import { ErrorGuard } from "./components/ErrorGuard";
 
-const service = new Service();
+function Command({
+  launchContext = {},
+}: LaunchProps<{
+  launchContext?: LaunchContext;
+}>) {
+  const [query, setQuery] = useState("");
+  const { data, isLoading, error } = useQueryIcons(query);
+  const { iconColor, customColor } = getPreferenceValues<Preferences>();
 
-function Command() {
-  const [icons, setIcons] = useState<Icon[]>([]);
-  const [isLoading, setLoading] = useState(false);
-  const [query, setQuery] = useState('');
-
-  async function queryIcons(text: string) {
-    setQuery(text);
-    setLoading(true);
-    const icons = await service.queryIcons(text);
-    setIcons(icons);
-    setLoading(false);
-  }
-
-  function getEmptyViewDescription(query: string) {
-    if (query.length === 0) {
-      return 'Type something to get started';
+  function getEmptyViewDescription(query: string, isLoading: boolean) {
+    if (query.length === 0 || isLoading) {
+      return "Type something to get started";
     }
-    return 'Try another query';
+    return "Try another query";
   }
 
   return (
-    <List throttle isLoading={isLoading} onSearchTextChange={queryIcons}>
-      <List.EmptyView
-        title="No results"
-        description={getEmptyViewDescription(query)}
-      />
-      {icons.map((icon) => {
-        const { set, id, body, width, height } = icon;
-        const { id: setId, title: setName } = set;
-        const svgIcon = toSvg(body, width, height);
-        const base64Icon = toBase64(svgIcon);
-        return (
-          <List.Item
-            icon={{ source: base64Icon, tintColor: Color.PrimaryText }}
-            key={`${setId}:${id}`}
-            title={id}
-            accessories={[
-              {
-                text: setName,
-              },
-            ]}
-            actions={
-              <ActionPanel>
-                <Action.CopyToClipboard content={svgIcon} />
-              </ActionPanel>
-            }
-          />
-        );
-      })}
-    </List>
+    <ErrorGuard error={error}>
+      <Grid throttle columns={8} inset={Grid.Inset.Medium} isLoading={isLoading} onSearchTextChange={setQuery}>
+        <Grid.EmptyView title="No results" description={getEmptyViewDescription(query, isLoading)} />
+        {data.map((icon) => {
+          const { set, id, body, width, height } = icon;
+          const { id: setId, title: setName } = set;
+          const currentColor =
+            launchContext?.hex ||
+            (iconColor === iconColorEnum.customColor &&
+            customColor &&
+            /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(customColor)
+              ? customColor
+              : iconColor);
+          const svgIcon = toSvg(body, width, height, currentColor);
+          const dataURIIcon = toDataURI(svgIcon);
+          return (
+            <Grid.Item
+              content={{
+                source: dataURIIcon,
+                tintColor:
+                  body.includes("currentColor") && !launchContext?.hex && iconColor !== iconColorEnum.customColor
+                    ? Color.PrimaryText // Monochrome icon
+                    : null,
+              }}
+              key={`${setId}:${id}`}
+              title={id}
+              subtitle={setName}
+              actions={
+                <IconActions id={id} setId={setId} svgIcon={svgIcon} dataURIIcon={dataURIIcon} from="search-icons" />
+              }
+            />
+          );
+        })}
+      </Grid>
+    </ErrorGuard>
   );
 }
 

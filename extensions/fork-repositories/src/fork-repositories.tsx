@@ -1,37 +1,34 @@
-import { ActionPanel, Detail, List, Action } from "@raycast/api";
-import { homedir } from "os";
-import { dirname } from "path";
+import { ActionPanel, Detail, List, Action, open } from "@raycast/api";
+import { dirname } from "node:path";
 import tildify from "./vendor/tildify";
 import { useRepos, useHasApplication } from "./hooks";
-
-export const FORK_BUNDLE_ID = "com.DanPristupov.Fork";
-export const REPO_FILE_PATH = `${homedir()}/Library/Application Support/${FORK_BUNDLE_ID}/repositories.json`;
-
-const ForkNotFound = () => {
-  return (
-    <Detail
-      navigationTitle="Fork.app not found"
-      markdown={`
-  # Fork.app not found 
-
-  You need to have Fork to use this extension. You can download it [here](https://fork.dev/), or alternatively using
-  [Homebrew](https://brew.sh/):
-  \`\`\`
-  brew install --cask fork
-  \`\`\`
-      `}
-    />
-  );
-};
+import { FORK_APP_IDENTIFIER, REPO_FILE_PATHS } from "./constants";
 
 const Command = () => {
-  const [hasFork, isHasForkLoading] = useHasApplication(FORK_BUNDLE_ID);
-  const [repos, isReposLoading] = useRepos(REPO_FILE_PATH);
-
+  const [hasFork, isHasForkLoading] = useHasApplication(FORK_APP_IDENTIFIER);
+  const [repos, isReposLoading] = useRepos(REPO_FILE_PATHS);
   const isLoading = isHasForkLoading || isReposLoading;
 
   if (!isLoading && !hasFork) {
-    return <ForkNotFound />;
+    const installInstructions =
+      process.platform === "win32"
+        ? `You can download it [here](https://fork.dev/), or install using [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+\`\`\`
+winget install Fork.Fork
+\`\`\``
+        : `You can download it [here](https://fork.dev/), or install using [Homebrew](https://brew.sh/):
+\`\`\`
+brew install --cask fork
+\`\`\``;
+
+    return (
+      <Detail
+        navigationTitle="Fork not found"
+        markdown={`# Fork not found
+
+You need to have Fork installed to use this extension. ${installInstructions}`}
+      />
+    );
   }
 
   if (!isLoading && repos.length === 0) {
@@ -39,29 +36,54 @@ const Command = () => {
   }
 
   return (
-    <List searchBarPlaceholder="Search repositories…" isLoading={isLoading}>
-      <List.Section title={`${repos.length} ${repos.length === 1 ? "Repository" : "Repositories"}`}>
-        {repos.map((repo, index) => {
-          const { path, name } = repo;
-          return (
-            <List.Item
-              key={index}
-              title={name}
-              accessoryTitle={dirname(tildify(path))}
-              icon={{ fileIcon: path }}
-              actions={
-                <ActionPanel>
-                  <ActionPanel.Section>
-                    <Action.Open title="Open in Fork" icon="icon.png" target={path} application={FORK_BUNDLE_ID} />
-                    <Action.OpenWith path={path} />
-                    <Action.ShowInFinder path={path} />
-                  </ActionPanel.Section>
-                </ActionPanel>
-              }
-            />
-          );
-        })}
-      </List.Section>
+    <List searchBarPlaceholder="Search repositories…" isLoading={isLoading} filtering={{ keepSectionOrder: true }}>
+      {Object.entries(
+        repos.reduce((acc: { [dir: string]: Repo[] }, repo) => {
+          const dir = dirname(repo.path);
+          if (!(dir in acc)) {
+            acc[dir] = [];
+          }
+          acc[dir].push(repo);
+          return acc;
+        }, {})
+      ).map(([dir, repos]) => (
+        <List.Section
+          key={dir}
+          title={tildify(dir)}
+          subtitle={`${repos.length} ${repos.length === 1 ? "Repository" : "Repositories"}`}
+        >
+          {repos.map((repo) => {
+            const { path, name } = repo;
+            return (
+              <List.Item
+                key={path}
+                title={name}
+                icon={{ fileIcon: path }}
+                actions={
+                  <ActionPanel>
+                    <ActionPanel.Section>
+                      <Action
+                        title="Open in Fork"
+                        icon="icon.png"
+                        onAction={async () => {
+                          // For some reason, if this action is used when Fork isn't running, it'll result in
+                          // the app being started, but not the repo actually being opened.
+                          // So to work around that, we call `open` twice 🤷
+                          await open(path, FORK_APP_IDENTIFIER);
+                          await open(path, FORK_APP_IDENTIFIER);
+                        }}
+                      />
+                      <Action.OpenWith path={path} />
+                      <Action.ShowInFinder path={path} />
+                    </ActionPanel.Section>
+                  </ActionPanel>
+                }
+                accessories={[{ tag: dirname(tildify(path)) }]}
+              />
+            );
+          })}
+        </List.Section>
+      ))}
     </List>
   );
 };

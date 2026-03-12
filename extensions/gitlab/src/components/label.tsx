@@ -1,9 +1,8 @@
 import { Action, ActionPanel, Color, Detail, Icon, List } from "@raycast/api";
 import { Label } from "../gitlabapi";
 import { GitLabIcons } from "../icons";
-import { ensureCleanAccessories } from "../utils";
 
-export function LabelDetail(props: { label: Label }): JSX.Element {
+export function LabelDetail(props: { label: Label }) {
   const l = props.label;
   let md = `## Color\n${l.color}`;
   if (l.description) {
@@ -12,7 +11,7 @@ export function LabelDetail(props: { label: Label }): JSX.Element {
   return <Detail markdown={md} />;
 }
 
-export function LabelListItem(props: { label: Label }): JSX.Element {
+export function LabelListItem(props: { label: Label }) {
   const l = props.label;
   const accessoryTitle = Object.keys(l).includes("subscribed") && l.subscribed ? "subscribed" : undefined;
   return (
@@ -20,7 +19,7 @@ export function LabelListItem(props: { label: Label }): JSX.Element {
       key={l.id.toString()}
       title={l.name}
       icon={{ source: Icon.Circle, tintColor: l.color }}
-      accessories={ensureCleanAccessories([{ text: accessoryTitle }])}
+      accessories={[{ text: accessoryTitle }]}
       actions={
         <ActionPanel>
           <Action.Push
@@ -41,16 +40,19 @@ export function LabelList(props: {
   onSearchTextChange?: ((text: string) => void) | undefined;
   isLoading?: boolean | undefined;
   throttle?: boolean | undefined;
-}): JSX.Element {
+  navigationTitle?: string;
+}) {
+  const labels = props.labels.filter((l) => l && l.id);
   return (
     <List
       searchBarPlaceholder="Search labels by name"
       onSearchTextChange={props.onSearchTextChange}
       isLoading={props.isLoading}
       throttle={props.throttle}
+      navigationTitle={props.navigationTitle}
     >
       <List.Section title={props.title}>
-        {props.labels.map((l) => (
+        {labels.map((l) => (
           <LabelListItem key={l.id.toString()} label={l} />
         ))}
       </List.Section>

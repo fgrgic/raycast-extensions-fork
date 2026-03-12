@@ -1,18 +1,26 @@
-import { Action, ActionPanel, Color, Detail, Icon, useNavigation } from '@raycast/api';
+import { Action, ActionPanel, Color, Detail, Icon, Keyboard, useNavigation } from '@raycast/api';
 import { DockerState } from './docker';
 import { containerName, formatContainerDetailMarkdown } from './docker/container';
 import { formatContainerError } from './docker/error';
 import { withToast } from './ui/toast';
 
 export default function ContainerDetail({ docker, containerId }: { docker: DockerState; containerId: string }) {
-  const { isLoading, containerInfo, startContainer, restartContainer, stopContainer, removeContainer } =
-    docker.useContainerInfo(containerId);
+  const {
+    isLoading,
+    containerInfo,
+    startContainer,
+    restartContainer,
+    stopContainer,
+    removeContainer,
+    stopAndRemoveContainer,
+  } = docker.useContainerInfo(containerId);
   const { pop } = useNavigation();
 
   return (
     <Detail
       isLoading={isLoading}
       markdown={formatContainerDetailMarkdown(containerInfo)}
+      key={containerId}
       metadata={
         containerInfo && (
           <Detail.Metadata>
@@ -28,8 +36,19 @@ export default function ContainerDetail({ docker, containerId }: { docker: Docke
             </Detail.Metadata.TagList>
             {containerInfo.Config.ExposedPorts && (
               <Detail.Metadata.TagList title="Ports">
-                {Object.keys(containerInfo.Config.ExposedPorts).map((p) => (
-                  <Detail.Metadata.TagList.Item text={p} color={Color.PrimaryText} />
+                {Object.keys(containerInfo.Config.ExposedPorts).map((p, idx) => (
+                  <Detail.Metadata.TagList.Item text={p} color={Color.PrimaryText} key={idx} />
+                ))}
+              </Detail.Metadata.TagList>
+            )}
+            {containerInfo.NetworkSettings.Ports && (
+              <Detail.Metadata.TagList title="Host Ports">
+                {Object.keys(containerInfo.NetworkSettings.Ports).map((p, idx) => (
+                  <Detail.Metadata.TagList.Item
+                    text={containerInfo.NetworkSettings.Ports[p]?.map((p) => p.HostPort).join(', ') || 'None'}
+                    color={Color.PrimaryText}
+                    key={idx}
+                  />
                 ))}
               </Detail.Metadata.TagList>
             )}
@@ -45,9 +64,13 @@ export default function ContainerDetail({ docker, containerId }: { docker: Docke
           {containerInfo?.State.Running === true && (
             <Action
               title="Stop Container"
-              shortcut={{ modifiers: ['cmd', 'shift'], key: 'w' }}
+              shortcut={{
+                macOS: { modifiers: ['cmd', 'shift'], key: 'w' },
+                windows: { modifiers: ['ctrl', 'shift'], key: 'w' },
+              }}
               onAction={withToast({
                 action: () => stopContainer(containerInfo),
+                onStart: () => `Stopping container ${containerName(containerInfo)}`,
                 onSuccess: () => `Container ${containerName(containerInfo)} stopped`,
                 onFailure: (error) => formatContainerError(error, containerInfo),
               })}
@@ -57,9 +80,13 @@ export default function ContainerDetail({ docker, containerId }: { docker: Docke
             <Action
               title="Restart Container"
               icon={Icon.ArrowClockwise}
-              shortcut={{ modifiers: ['opt'], key: 'r' }}
+              shortcut={{
+                macOS: { modifiers: ['opt'], key: 'r' },
+                windows: { modifiers: ['alt'], key: 'r' },
+              }}
               onAction={withToast({
                 action: () => restartContainer(containerInfo),
+                onStart: () => `Restarting container ${containerName(containerInfo)}`,
                 onSuccess: () => `Container ${containerName(containerInfo)} restarted`,
                 onFailure: (error) => formatContainerError(error, containerInfo),
               })}
@@ -68,26 +95,50 @@ export default function ContainerDetail({ docker, containerId }: { docker: Docke
           {containerInfo?.State.Running === false && (
             <Action
               title="Start Container"
-              shortcut={{ modifiers: ['cmd', 'shift'], key: 'r' }}
+              shortcut={{
+                macOS: { modifiers: ['cmd', 'shift'], key: 'r' },
+                windows: { modifiers: ['ctrl', 'shift'], key: 'r' },
+              }}
               onAction={withToast({
                 action: () => startContainer(containerInfo),
+                onStart: () => `Starting container ${containerName(containerInfo)}`,
                 onSuccess: () => `Container ${containerName(containerInfo)} started`,
                 onFailure: (error) => formatContainerError(error, containerInfo),
               })}
             />
           )}
 
-          {containerInfo !== undefined && (
+          {containerInfo?.State.Running === false && (
             <Action
               title="Remove Container"
-              icon={{ source: Icon.Trash, tintColor: Color.Red }}
-              shortcut={{ modifiers: ['cmd', 'shift'], key: 'x' }}
+              icon={Icon.Trash}
+              style={Action.Style.Destructive}
+              shortcut={Keyboard.Shortcut.Common.Remove}
               onAction={withToast({
                 action: async () => {
                   await removeContainer(containerInfo);
                   pop();
                 },
+                onStart: () => `Removing container ${containerName(containerInfo)}`,
                 onSuccess: () => `Container ${containerName(containerInfo)} removed`,
+                onFailure: (error) => formatContainerError(error, containerInfo),
+              })}
+            />
+          )}
+
+          {containerInfo?.State.Running === true && (
+            <Action
+              title="Stop and Remove Container"
+              icon={Icon.Trash}
+              style={Action.Style.Destructive}
+              shortcut={Keyboard.Shortcut.Common.Remove}
+              onAction={withToast({
+                action: async () => {
+                  await stopAndRemoveContainer(containerInfo);
+                  pop();
+                },
+                onStart: () => `Stopping and removing container ${containerName(containerInfo)}`,
+                onSuccess: () => `Container ${containerName(containerInfo)} stopped and removed`,
                 onFailure: (error) => formatContainerError(error, containerInfo),
               })}
             />

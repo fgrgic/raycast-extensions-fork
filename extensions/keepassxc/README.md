@@ -1,48 +1,33 @@
-# KeepassXC Extension for Raycast
+<div align="center">
+  <img width="125" src="https://raw.githubusercontent.com/raycast/extensions/main/extensions/keepassxc/assets/keepassxc.png">
 
-This is a Raycast extension to access keepass database.
+<h1>KeePassXC</h1>
+
+Access your KeePass database directly from Raycast
+
+Search entries &nbsp;⸱&nbsp; Copy & paste any field &nbsp;⸱&nbsp; Generate TOTP codes &nbsp;⸱&nbsp; Mark entries as favorites
+
+</div>
 
 ## Requirements
 
-- [KeePassXC.app](https://keepassxc.org) installed.(`keepassxc-cli` in `KeepassXC.app` is required to access keepass database
+To use this extension, you will need:
 
-## Setup
+- [KeePassXC](https://keepassxc.org)
 
-There are 3 parameters required for this extension to work:
+## Available Options
 
-- path of `KeePassXC.app` (default `/Applications/KeePassXC.app`)
-- a keepass database file
-- password to access database
+Configure the following preferences in the extension settings:
 
-![preference](media/preferences.png)
+- **Inactivity Timer:** Automatically locks the database after a period of inactivity
+- **Display Favicon:** Shows website favicons for entries
 
-## Usage
+## Security
 
-![example](media/example.gif)
+### Implementation
 
-### Shortcuts
+This extension leverages the KeePassXC command-line interface (CLI). All applicable CLI security considerations apply. For comprehensive details, refer to the [KeePassXC CLI documentation](https://keepassxc.org/docs/KeePassXC_UserGuide#_command_line_tool).
 
-- `Enter` : Copy and Paste Password
-- `Cmd`+`Enter` : Copy Password
-- `Cmd`+`B` : Copy Username
+### Credential Storage
 
-## Password Security Note
-
-This extension works by using `keepassxc-cli`(inside `KeePassXC.app`) in command line to access keepass database:
-
-- Main password is stored by raycast. (encrypted)
-- Main password will be send to `keepassxc-cli` by simulating command line interaction with nodejs api [subprocess.stdin.write](https://nodejs.org/api/child_process.html#subprocessstdin).
-
-### Related commands
-
-```bash
-# List entries
-keepassxc-cli locate -q /path/to/database.kdbx /
-
-# Get password by entry
-keepassxc-cli show -q -a Password /path/to/database.kdbx entry_name
-
-# Get username by entry
-keepassxc-cli show -q -a Username /path/to/database.kdbx entry_name
-
-```
+Your credentials required to access your KeePass database, which include a password and an optional key file, are securely stored in [Raycast's local encrypted database](https://developers.raycast.com/information/security#data-storage). This storage prevents other extensions from accessing the storage of that extension.

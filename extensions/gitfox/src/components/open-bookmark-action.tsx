@@ -3,14 +3,16 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import Bookmark from "../dtos/bookmark-dto";
 import GitfoxPreferences from "../interfaces/gitfox-preferences";
+import { JSX } from "react";
 
 const execp = promisify(exec);
 
 type OpenBookMarkActionProps = {
   bookmark: Bookmark;
+  onOpen?: () => void;
 };
 
-const OpenBookMarkAction = ({ bookmark, ...props }: OpenBookMarkActionProps): JSX.Element => (
+const OpenBookmarkAction = ({ bookmark, onOpen, ...props }: OpenBookMarkActionProps): JSX.Element => (
   <Action
     {...props}
     icon={Icon.Link}
@@ -19,14 +21,14 @@ const OpenBookMarkAction = ({ bookmark, ...props }: OpenBookMarkActionProps): JS
       try {
         const prefs = getPreferenceValues<GitfoxPreferences>();
         await execp(`${prefs.gitfoxCliPath} ${bookmark.getFolder}`);
-      } catch (e) {
-        showToast(Toast.Style.Failure, `Error!`, `There was a error opening: ${bookmark.Folder}`);
-      } finally {
+        onOpen?.();
         closeMainWindow({ clearRootSearch: true });
-        showHUD(`Opening ${bookmark.Name} in Gitfox`);
+        showHUD(`Opening ${bookmark.name} in Gitfox`);
+      } catch {
+        showToast(Toast.Style.Failure, `Error!`, `There was a error opening: ${bookmark.folder}`);
       }
     }}
   />
 );
 
-export default OpenBookMarkAction;
+export default OpenBookmarkAction;

@@ -1,4 +1,4 @@
-export interface Repository {
+export type Repository = {
   uuid: string;
   name: string;
   slug: string;
@@ -6,16 +6,20 @@ export interface Repository {
   avatarUrl: string;
   fullName: string;
   url: string;
-}
+  clone: {
+    ssh?: string;
+    https?: string;
+  };
+};
 
-export interface Patch {
+export type Patch = {
   text?: string;
   tags?: string[];
   timee?: number;
   timeEnd?: number;
-}
+};
 
-export interface Pipeline {
+export type Pipeline = {
   uuid: string;
   name: string;
   buildNumber: string;
@@ -23,6 +27,7 @@ export interface Pipeline {
   avatarCreatorUrl: string;
   triggerName: string;
   commitMessage: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   target: any;
   createdOn: string;
-}
+};

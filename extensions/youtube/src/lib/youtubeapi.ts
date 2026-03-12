@@ -1,34 +1,18 @@
-import { getPreferenceValues } from "@raycast/api";
-import { useEffect, useState } from "react";
-import { getErrorMessage } from "./utils";
 import { youtube, youtube_v3 } from "@googleapis/youtube";
-import { GaxiosResponse } from "googleapis-common";
+import { getPreferenceValues } from "@raycast/api";
+import { convertYouTubeDuration } from "duration-iso-8601";
+import { useEffect, useState } from "react";
+import { Preferences } from "./types";
+import { getErrorMessage } from "./utils";
 
 function createClient(): youtube_v3.Youtube {
-  const pref = getPreferenceValues();
-  const apiKey = (pref.apikey as string) || "";
-  const client = youtube({ version: "v3", auth: apiKey });
-  return client;
+  const { apikey } = getPreferenceValues<Preferences>();
+  return youtube({ version: "v3", auth: apikey });
 }
 
 export const youtubeClient = createClient();
 
-export enum PrimaryAction {
-  Detail = "detail",
-  Browser = "browser",
-}
-
-export function getPrimaryActionPreference(): PrimaryAction {
-  const pref = getPreferenceValues();
-  const val = (pref.primaryaction as string) || undefined;
-  if (val !== PrimaryAction.Detail && val !== PrimaryAction.Browser) {
-    return PrimaryAction.Detail;
-  }
-  const result: PrimaryAction = val;
-  return result;
-}
-
-const maxPageResults = 50;
+const maxPageResults = 100;
 
 export enum SearchType {
   channel = "channel",
@@ -42,7 +26,7 @@ export interface Fetcher {
 
 export function useRefresher<T>(
   fn: (updateInline: boolean) => Promise<T>,
-  deps?: React.DependencyList | undefined
+  deps?: React.DependencyList | undefined,
 ): {
   data: T | undefined;
   error?: string;
@@ -56,7 +40,7 @@ export function useRefresher<T>(
   const depsAll = [timestamp];
   if (deps) {
     for (const d of deps) {
-      depsAll.push(d);
+      depsAll.push(d as Date);
     }
   }
   let cancel = false;
@@ -146,6 +130,7 @@ export interface Video {
   id: string;
   title: string;
   description?: string;
+  duration?: string | undefined;
   publishedAt: string;
   thumbnails: Thumbnails;
   statistics?: VideoStatistics;
@@ -173,7 +158,7 @@ async function fetchAndInjectVideoStats(videos: Video[]) {
   if (videoIds) {
     const statsData = await youtubeClient.videos.list({
       id: videoIds,
-      part: ["statistics"],
+      part: ["statistics", "contentDetails"],
       maxResults: videoIds.length,
     });
     const statsItems = statsData.data.items;
@@ -186,6 +171,7 @@ async function fetchAndInjectVideoStats(videos: Video[]) {
             const el = videos.find((x) => x.id === s.id);
             if (el) {
               el.statistics = stats;
+              el.duration = convertYouTubeDuration(s.contentDetails?.duration);
             }
           }
         }
@@ -196,24 +182,37 @@ async function fetchAndInjectVideoStats(videos: Video[]) {
   }
 }
 
+export interface SearchOptions {
+  order?: string;
+  eventType?: "live" | "completed" | "upcoming";
+}
+
 async function search(
   query: string,
   type: SearchType,
-  channedId?: string | undefined
-): Promise<GaxiosResponse<youtube_v3.Schema$SearchListResponse>> {
+  channedId?: string | undefined,
+  options?: SearchOptions,
+): Promise<youtube_v3.Schema$SearchListResponse> {
   const data = await youtubeClient.search.list({
     q: query,
     part: ["id", "snippet"],
     type: [type],
     maxResults: maxPageResults,
     channelId: channedId,
+    order: options?.order ?? "relevance",
+    // eventType only applies to video searches
+    eventType: type === SearchType.video ? options?.eventType : undefined,
   });
-  return data;
+  return data.data;
 }
 
-export async function searchVideos(query: string, channedId?: string | undefined): Promise<Video[]> {
-  const data = await search(query, SearchType.video, channedId);
-  const items = data?.data.items;
+export async function searchVideos(
+  query: string,
+  channedId?: string | undefined,
+  options?: SearchOptions,
+): Promise<Video[]> {
+  const data = await search(query, SearchType.video, channedId, options);
+  const items = data?.items;
   const result: Video[] = [];
   if (items) {
     for (const r of items) {
@@ -243,9 +242,43 @@ export async function searchVideos(query: string, channedId?: string | undefined
   return result;
 }
 
-export async function searchChannels(query: string): Promise<Channel[]> {
-  const data = await search(query, SearchType.channel);
-  const items = data?.data.items;
+export async function getVideos(videoIds: string[]): Promise<Video[]> {
+  if (videoIds.length > 0) {
+    const data = await youtubeClient.videos.list({
+      id: videoIds,
+      part: ["id", "snippet"],
+      maxResults: videoIds.length,
+    });
+    const result =
+      data?.data.items?.map(
+        (r) =>
+          ({
+            id: r.id,
+            title: r.snippet?.title || "?",
+            description: r.snippet?.description || undefined,
+            publishedAt: r.snippet?.publishedAt || "?",
+            channelId: r.snippet?.channelId || "",
+            channelTitle: r.snippet?.channelTitle || "?",
+
+            thumbnails: {
+              default: {
+                url: r.snippet?.thumbnails?.default?.url || undefined,
+              },
+              high: {
+                url: r.snippet?.thumbnails?.high?.url || undefined,
+              },
+            },
+          }) as Video,
+      ) || [];
+    await fetchAndInjectVideoStats(result);
+    return result;
+  }
+  return [];
+}
+
+export async function searchChannels(query: string, options?: SearchOptions): Promise<Channel[]> {
+  const data = await search(query, SearchType.channel, undefined, options);
+  const items = data?.items;
   const channelIds: string[] = [];
   const result: Channel[] = [];
   if (items) {
@@ -358,6 +391,10 @@ export async function getChannel(channelId: string): Promise<Channel | undefined
   return result;
 }
 
+export async function getChannels(channelIds: string[]): Promise<Channel[]> {
+  return (await Promise.all(channelIds.map((id) => getChannel(id)))).filter((x) => x !== undefined) as Channel[];
+}
+
 export async function getPlaylistVideos(playlistId: string): Promise<Video[] | undefined> {
   let result: Video[] | undefined;
 
@@ -417,6 +454,7 @@ export async function getPopularVideos(): Promise<Video[] | undefined> {
           id: item.id || "",
           title: sn.title || "?",
           description: sn.description || undefined,
+          duration: convertYouTubeDuration(item.contentDetails?.duration),
           publishedAt: sn.publishedAt || "?",
           thumbnails: {
             default: {

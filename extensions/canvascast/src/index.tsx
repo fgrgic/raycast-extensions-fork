@@ -4,61 +4,66 @@ import { Course } from "./components/course";
 import { Assignment } from "./components/assignment";
 import { Announcement } from "./components/announcement";
 import { EmptyView } from "./components/error-view";
-import { checkApi, getCourses, getAssignments, getAnnouncements } from "./utils/api";
-import { course, announcement } from "./utils/types";
+import { checkApi, getCourses } from "./utils/api";
+import { course, announcement, assignment } from "./utils/types";
 import { Error } from "./utils/utils";
 
 export default function main() {
   const [courses, setCourses] = useState<course[]>();
-  const [announcements, setAnnouncements] = useState<announcement[]>();
-
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState(Error.INVALID_API_KEY);
 
   useEffect(() => {
-    const getItems = async () => {
+    (async () => {
       try {
         const json = await checkApi();
-        if (json.status == "unauthenticated" || !(json instanceof Array)) {
-          setCourses(null);
-          setIsLoading(false);
+        if (json.status === "unauthenticated" || !(json instanceof Array)) {
           setError(Error.INVALID_API_KEY);
-          return;
+          setCourses(undefined);
+          setIsLoading(false);
+        } else {
+          try {
+            const courses = await getCourses(json);
+            setCourses(courses);
+            setIsLoading(false);
+          } catch (error) {
+            console.error(error);
+            setError(Error.INVALID_DOMAIN);
+            setCourses(undefined);
+            setIsLoading(false);
+          }
         }
-        const courses = await getCourses(json);
-        const assignments = await getAssignments(courses);
-        const announcements = await getAnnouncements(courses);
-        courses.forEach((course: course, index: number) => {
-          course.assignments = assignments[index];
-        });
-        setCourses(courses);
-        setAnnouncements(announcements);
+      } catch (error) {
+        console.error(error);
+        setError(Error.INVALID_API_KEY);
+        setCourses(undefined);
         setIsLoading(false);
-      } catch {
-        setCourses(null);
-        setIsLoading(false);
-        setError(Error.INVALID_DOMAIN);
       }
-    };
-    getItems();
+    })();
   }, []);
 
   return (
     <List isLoading={isLoading}>
-      {courses !== null ? (
+      {courses !== undefined ? (
         <React.Fragment>
           <List.Section title="Courses">
-            {!isLoading &&
-              courses.map((course, index) => <Course key={index} course={course} announcements={announcements} />)}
+            {!isLoading && courses.map((course) => <Course key={course.id} course={course} />)}
           </List.Section>
           <List.Section title="Assignments">
             {!isLoading &&
-              courses.map((course: any) =>
-                course.assignments?.map((assignment: any) => <Assignment key={assignment.id} {...assignment} />)
+              courses.map((course: course) =>
+                course.assignments?.map((assignment: assignment) => (
+                  <Assignment key={assignment.id} assignment={assignment} />
+                )),
               )}
           </List.Section>
           <List.Section title="Announcements">
-            {!isLoading && announcements?.map((announcement, index) => <Announcement key={index} {...announcement} />)}
+            {!isLoading &&
+              courses.map((course: course) =>
+                course.announcements?.map((announcement: announcement) => (
+                  <Announcement key={announcement.id} announcement={announcement} />
+                )),
+              )}
           </List.Section>
         </React.Fragment>
       ) : (

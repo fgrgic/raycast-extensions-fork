@@ -1,22 +1,34 @@
-import { ActionPanel, Form, Action, useNavigation, showToast, Toast } from "@raycast/api";
+import { Note, ObsidianVault } from "@/obsidian";
+import { Action, ActionPanel, Form, getPreferenceValues, showToast, Toast, useNavigation } from "@raycast/api";
 import fs from "fs";
-
-interface Note {
-  title: string;
-  key: number;
-  path: string;
-}
+import { updateNoteInCache } from "../api/cache/cache.service";
+import { applyTemplates } from "../api/templating/templating.service";
+import { SearchNotePreferences } from "../utils/preferences";
 
 interface FormValue {
   content: string;
 }
 
-export function AppendNoteForm(props: { note: Note }) {
-  const note = props.note;
+export function AppendNoteForm(props: {
+  note: Note;
+  vault: ObsidianVault;
+  onNoteUpdated?: (notePath: string, updates: Partial<Note>) => void;
+}) {
+  const { note, vault, onNoteUpdated } = props;
   const { pop } = useNavigation();
 
-  function addTextToNote(text: FormValue) {
-    fs.appendFileSync(note.path, "\n" + text.content);
+  const { appendTemplate } = getPreferenceValues<SearchNotePreferences>();
+
+  async function addTextToNote(text: FormValue) {
+    const content = await applyTemplates(text.content);
+    fs.appendFileSync(note.path, "\n" + content);
+
+    // Update cache and notify parent
+    const stats = fs.statSync(note.path);
+    const updates = { lastModified: stats.mtime };
+    updateNoteInCache(vault.path, note.path, updates);
+    onNoteUpdated?.(note.path, updates);
+
     showToast({ title: "Added text to note", style: Toast.Style.Success });
     pop();
   }
@@ -30,7 +42,12 @@ export function AppendNoteForm(props: { note: Note }) {
         </ActionPanel>
       }
     >
-      <Form.TextArea title={"Add text to:\n" + note.title} id="content" placeholder={"Text"} />
+      <Form.TextArea
+        title={"Add text to:\n" + note.title}
+        id="content"
+        placeholder={"Text"}
+        defaultValue={appendTemplate}
+      />
     </Form>
   );
 }

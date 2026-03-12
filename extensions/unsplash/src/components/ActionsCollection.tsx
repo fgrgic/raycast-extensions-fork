@@ -1,7 +1,8 @@
-import { ActionPanel, Icon, useNavigation, Action } from "@raycast/api";
+import { ActionPanel, Icon, Action } from "@raycast/api";
 
 // Components
 import Details from "@/views/DetailsCollections";
+import { CollectionResult } from "@/types";
 
 // Types
 interface BaseProps {
@@ -16,7 +17,6 @@ export const Actions: React.FC<BaseProps> = ({ details = false, item }) => (
 );
 
 export const Sections: React.FC<BaseProps> = ({ details = false, item }) => {
-  const { push } = useNavigation();
   const imageUrl =
     item.cover_photo?.urls?.raw ||
     item.cover_photo?.urls?.full ||
@@ -26,7 +26,7 @@ export const Sections: React.FC<BaseProps> = ({ details = false, item }) => {
   return (
     <>
       <ActionPanel.Section>
-        {details && <Action title="Show Details" icon={Icon.List} onAction={() => push(<Details result={item} />)} />}
+        {details && <Action.Push title="Show Details" icon={Icon.List} target={<Details result={item} />} />}
 
         {item.links?.html && <Action.OpenInBrowser url={item.links.html} title="Open Collection" />}
 
@@ -39,10 +39,10 @@ export const Sections: React.FC<BaseProps> = ({ details = false, item }) => {
           />
         )}
 
-        {item.id && (
+        {Boolean(item.id) && (
           <Action.CopyToClipboard
             content={item.id}
-            title="Copy Collection ID to Clipboard"
+            title="Copy Collection ID"
             icon={Icon.Clipboard}
             shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
           />
@@ -51,19 +51,13 @@ export const Sections: React.FC<BaseProps> = ({ details = false, item }) => {
 
       <ActionPanel.Section title="Links">
         {item.links?.html && (
-          <Action.CopyToClipboard content={item.links.html} title="Copy URL to Clipboard" icon={Icon.Clipboard} />
+          <Action.CopyToClipboard content={item.links.html} title="Copy URL" icon={Icon.Clipboard} />
         )}
 
-        {imageUrl && (
-          <Action.CopyToClipboard content={imageUrl} title="Copy Cover URL to Clipboard" icon={Icon.Clipboard} />
-        )}
+        {imageUrl && <Action.CopyToClipboard content={imageUrl} title="Copy Cover URL" icon={Icon.Clipboard} />}
 
         {item.user?.links?.html && (
-          <Action.CopyToClipboard
-            content={item.user.links.html}
-            title="Copy Author URL to Clipboard"
-            icon={Icon.Clipboard}
-          />
+          <Action.CopyToClipboard content={item.user.links.html} title="Copy Author URL" icon={Icon.Clipboard} />
         )}
       </ActionPanel.Section>
     </>

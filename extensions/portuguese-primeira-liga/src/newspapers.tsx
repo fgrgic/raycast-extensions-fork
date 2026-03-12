@@ -1,11 +1,11 @@
-import { Action, ActionPanel, Detail, Grid } from "@raycast/api";
+import { Action, ActionPanel, Detail, Grid, Icon } from "@raycast/api";
 import useNewspapers from "./hooks/useNewspapers";
 
 export default function GetNewspapers() {
   const newspapers = useNewspapers();
 
   return (
-    <Grid throttle isLoading={!newspapers} itemSize={Grid.ItemSize.Large} enableFiltering={false}>
+    <Grid isLoading={!newspapers} columns={3} filtering={false}>
       {newspapers?.map((paper) => {
         return (
           <Grid.Item
@@ -18,22 +18,20 @@ export default function GetNewspapers() {
               <ActionPanel>
                 <Action.Push
                   title="Open"
+                  icon={Icon.SoccerBall}
                   target={
                     <Detail
                       markdown={`![](${paper.cover})`}
                       navigationTitle={paper.title}
-                      metadata={
-                        <Detail.Metadata>
-                          <Detail.Metadata.Link
-                            title={paper.name || ""}
-                            target={paper.url || ""}
-                            text="Go to website"
-                          />
-                        </Detail.Metadata>
+                      actions={
+                        <ActionPanel>
+                          <Action.OpenInBrowser url={paper.url || ""} />
+                        </ActionPanel>
                       }
                     />
                   }
                 />
+                <Action.OpenInBrowser url={paper.url || ""} />
               </ActionPanel>
             }
           />

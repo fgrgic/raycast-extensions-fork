@@ -1,47 +1,31 @@
-import { Form, ActionPanel, SubmitFormAction, showToast, ToastStyle, popToRoot } from "@raycast/api";
-import Caffeinate from "./caffeinate";
+import { showToast, Toast } from "@raycast/api";
+import { startCaffeinate } from "./utils";
 
-const durationUnitMultiplierMap = {
-  seconds: 1,
-  minutes: 60,
-  hours: 60 * 60,
-};
+export default async function Command(props: { arguments: Arguments.CaffeinateFor }) {
+  const { hours, minutes, seconds } = props.arguments;
+  const hasValue = hours || minutes || seconds;
 
-interface FormValues {
-  time: string;
-  unit: keyof typeof durationUnitMultiplierMap;
-}
+  if (!hasValue) {
+    await showToast(Toast.Style.Failure, "No values set for caffeinate length");
+    return;
+  }
 
-const CaffeinateFor = () => {
-  const onSubmit = async ({ time, unit }: FormValues) => {
-    const timeAsNumber = Number.parseFloat(time);
-    if (Number.isNaN(timeAsNumber)) {
-      await showToast(ToastStyle.Failure, "Invalid time");
-      return;
-    }
+  const validInput =
+    (!hours || (Number.isInteger(Number(hours)) && Number(hours) >= 0)) &&
+    (!minutes || (Number.isInteger(Number(minutes)) && Number(minutes) >= 0)) &&
+    (!seconds || (Number.isInteger(Number(seconds)) && Number(seconds) >= 0));
 
-    const multiplier = durationUnitMultiplierMap[unit] ?? 1;
+  if (!validInput) {
+    await showToast(Toast.Style.Failure, "Please ensure all arguments are whole numbers");
+    return;
+  }
 
-    await Caffeinate(`-t ${timeAsNumber * multiplier}`);
-    popToRoot();
-  };
+  const totalSeconds = Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+  const formattedTime = `${hours ? `${hours}h` : ""}${minutes ? `${minutes}m` : ""}${seconds ? `${seconds}s` : ""}`;
 
-  return (
-    <Form
-      actions={
-        <ActionPanel>
-          <SubmitFormAction title="Caffeinate" onSubmit={onSubmit} />
-        </ActionPanel>
-      }
-    >
-      <Form.TextField id="time" title="Duration" />
-      <Form.Dropdown id="unit" title="Duration Unit" defaultValue="minutes">
-        <Form.Dropdown.Item value="seconds" title="Seconds" />
-        <Form.Dropdown.Item value="minutes" title="Minutes" />
-        <Form.Dropdown.Item value="hours" title="Hours" />
-      </Form.Dropdown>
-    </Form>
+  await startCaffeinate(
+    { menubar: true, status: true },
+    `Caffeinating your Mac for ${formattedTime}`,
+    `-t ${totalSeconds}`,
   );
-};
-
-export default CaffeinateFor;
+}

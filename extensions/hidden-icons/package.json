@@ -67,8 +67,7 @@
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.36.0",
-    "file-url": "^4.0.0"
+    "@raycast/api": "^1.48.9"
   },
   "devDependencies": {
     "@types/node": "~16.10.0",
@@ -78,7 +77,6 @@
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "prettier": "^2.5.1",
-    "react-devtools": "^4.19.2",
     "typescript": "^4.4.3"
   },
   "scripts": {

@@ -1,32 +1,56 @@
+import { useState } from "react";
 import { Grid } from "@raycast/api";
-import { getGridItemSize, showImageTitle, toTitleCase } from "./functions/utils";
+import { getGridItemSize, showImageTitle, toTitleCase } from "@/functions/utils";
 
 // Hooks
-import { useSearch } from "./hooks/useSearch";
+import { useSearch } from "@/hooks/useSearch";
 
 // Components
-import Actions from "./components/ActionsCollection";
+import Actions from "@/components/ActionsCollection";
 
 // Types
+import { CollectionResult, Orientation } from "@/types";
 interface CollectionListItemProps {
   searchResult: CollectionResult;
 }
 
 const UnsplashCollections: React.FC = () => {
-  const { state, search } = useSearch("collections");
+  const [orientation, setOrientation] = useState<Orientation>("landscape");
+  const [search, setSearch] = useState("");
+  const { state } = useSearch(search, "collections", orientation);
   const itemSize = getGridItemSize();
+
+  const handleOrientationChange = (value: string) => {
+    setOrientation(value as Orientation);
+  };
 
   return (
     <Grid
       isLoading={state.isLoading}
       itemSize={itemSize}
-      onSearchTextChange={search}
+      onSearchTextChange={setSearch}
       searchBarPlaceholder="Search collections..."
+      searchBarAccessory={
+        <Grid.Dropdown
+          tooltip="Orientation"
+          storeValue={true}
+          defaultValue={orientation}
+          onChange={handleOrientationChange}
+        >
+          <Grid.Dropdown.Section title="Orientation">
+            <Grid.Dropdown.Item title="All" value="all" />
+            <Grid.Dropdown.Item title="Landscape" value="landscape" />
+            <Grid.Dropdown.Item title="Portrait" value="portrait" />
+            <Grid.Dropdown.Item title="Squarish" value="squarish" />
+          </Grid.Dropdown.Section>
+        </Grid.Dropdown>
+      }
       throttle
+      pagination={state.pagination}
     >
       <Grid.Section title="Results" subtitle={String(state?.results?.length)}>
         {state.results.map((result) => (
-          <SearchListItem key={result.id} searchResult={result} />
+          <SearchListItem key={result.id} searchResult={result as unknown as CollectionResult} />
         ))}
       </Grid.Section>
     </Grid>
@@ -34,13 +58,11 @@ const UnsplashCollections: React.FC = () => {
 };
 
 const SearchListItem: React.FC<CollectionListItemProps> = ({ searchResult }) => {
-  const [title, description, image, avatar] = [
+  const [title, image] = [
     searchResult.title || searchResult.description,
-    searchResult.description,
     searchResult.cover_photo?.urls?.thumb ||
       searchResult.cover_photo?.urls?.small ||
       searchResult.cover_photo?.urls?.regular,
-    searchResult?.user?.profile_image?.small,
   ];
 
   const gridItemTitle = showImageTitle() ? toTitleCase(title) : "";

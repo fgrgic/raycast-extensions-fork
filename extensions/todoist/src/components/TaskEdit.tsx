@@ -1,16 +1,17 @@
-import { useState } from "react";
 import { ActionPanel, Action, Form, Icon, showToast, Toast, useNavigation } from "@raycast/api";
-import { Task } from "@doist/todoist-api-typescript";
-import { mutate } from "swr";
-import { todoist, handleError } from "../api";
-import { SWRKeys } from "../types";
+import { showFailureToast } from "@raycast/utils";
+import { useState } from "react";
 
-interface TaskEditProps {
+import { Task, updateTask } from "../api";
+import useCachedData from "../hooks/useCachedData";
+
+type TaskEditProps = {
   task: Task;
-}
+};
 
 export default function TaskEdit({ task }: TaskEditProps) {
   const { pop } = useNavigation();
+  const [data, setData] = useCachedData();
 
   const [content, setContent] = useState(task.content);
   const [description, setDescription] = useState(task.description);
@@ -19,14 +20,12 @@ export default function TaskEdit({ task }: TaskEditProps) {
     await showToast({ style: Toast.Style.Animated, title: "Updating task" });
 
     try {
-      await todoist.updateTask(task.id, { content, description });
+      await updateTask({ id: task.id, content, description }, { data, setData });
       await showToast({ style: Toast.Style.Success, title: "Task updated" });
-      mutate(SWRKeys.tasks);
 
-      mutate([SWRKeys.task, task.id]);
       pop();
     } catch (error) {
-      handleError({ error, title: "Unable to update task" });
+      await showFailureToast(error, { title: "Unable to update task" });
     }
   }
 
@@ -41,6 +40,7 @@ export default function TaskEdit({ task }: TaskEditProps) {
       <Form.TextField id="content" title="Title" placeholder="Buy fruits" value={content} onChange={setContent} />
 
       <Form.TextArea
+        enableMarkdown
         id="description"
         title="Description"
         placeholder="Apples, pears, and **strawberries**"

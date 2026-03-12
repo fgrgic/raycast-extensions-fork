@@ -5,9 +5,10 @@ import { execAsync } from "../shared/exec-async";
 import dedent from "dedent";
 import { XcodeSwiftPlaygroundTemplate } from "../models/swift-playground/xcode-swift-playground-template.model";
 import { existsAsync, makeDirectoryAsync, removeDirectoryAsync, writeFileAsync } from "../shared/fs-async";
-import { joinPathComponents } from "../shared/join-path-components";
 import untildify from "untildify";
-import { getPreferenceValues } from "@raycast/api";
+import * as Path from "path";
+import { createSwiftPlaygroundCommandPreferences } from "../shared/preferences";
+import { XcodeSwiftPlaygroundSwiftVersion } from "../models/swift-playground/xcode-swift-playground-swift-version.model";
 
 /**
  * XcodeSwiftPlaygroundService
@@ -16,18 +17,7 @@ export class XcodeSwiftPlaygroundService {
   /**
    * The scaffold Swift Playground TemplateFiles
    */
-  private scaffoldTemplateFiles: TemplateFile[] = [
-    {
-      name: "timeline",
-      extension: "xctimeline",
-      contents: `
-      <?xml version="1.0" encoding="UTF-8"?>
-      <Timeline version="3.0">
-         <TimelineItems>
-         </TimelineItems>
-      </Timeline>
-      `,
-    },
+  private static scaffoldTemplateFiles: TemplateFile[] = [
     {
       path: "playground.xcworkspace",
       name: "contents",
@@ -35,7 +25,7 @@ export class XcodeSwiftPlaygroundService {
       contents: `
       <?xml version="1.0" encoding="UTF-8"?>
       <Workspace version="1.0">
-        <FileRef location="group:self:">
+        <FileRef location="group:">
         </FileRef>
       </Workspace>
       `,
@@ -45,11 +35,8 @@ export class XcodeSwiftPlaygroundService {
   /**
    * The default location where a Swift Playground should be created
    */
-  get defaultSwiftPlaygroundLocation(): string {
-    // Retrieve the preference values
-    const preferences = getPreferenceValues();
-    // Retrieve the excluded Xcode Project paths string from preference values
-    return preferences.playgroundDefaultLocation as string;
+  static get defaultSwiftPlaygroundLocation(): string {
+    return createSwiftPlaygroundCommandPreferences.playgroundDefaultLocation;
   }
 
   /**
@@ -57,7 +44,7 @@ export class XcodeSwiftPlaygroundService {
    * @param parameters The XcodeSwiftPlaygroundCreationParameters
    * @param forceCreate Bool value if the creation of a Swift Playground should be enforced
    */
-  async createSwiftPlayground(
+  static async createSwiftPlayground(
     parameters: XcodeSwiftPlaygroundCreationParameters,
     forceCreate: boolean
   ): Promise<XcodeSwiftPlayground> {
@@ -80,9 +67,9 @@ export class XcodeSwiftPlaygroundService {
     await makeDirectoryAsync(playgroundPath);
     // Initialize template files
     const templateFiles = [
-      ...this.scaffoldTemplateFiles,
+      ...XcodeSwiftPlaygroundService.scaffoldTemplateFiles,
       XcodeSwiftPlaygroundService.swiftSourceContentsTemplateFile(parameters.template),
-      XcodeSwiftPlaygroundService.contentsTemplateFile(parameters.platform),
+      XcodeSwiftPlaygroundService.contentsTemplateFile(parameters.platform, parameters.swiftVersion),
     ];
     try {
       // Create TemplateFiles in parallel
@@ -93,12 +80,12 @@ export class XcodeSwiftPlaygroundService {
           // Check if template file has a path
           if (templateFile.path) {
             // Join current file path with template file path
-            filePath = joinPathComponents(filePath, templateFile.path);
+            filePath = Path.join(filePath, templateFile.path);
             // Make directory
             await makeDirectoryAsync(filePath);
           }
           // Join current file path with file name
-          filePath = joinPathComponents(filePath, [templateFile.name, templateFile.extension].join("."));
+          filePath = Path.join(filePath, [templateFile.name, templateFile.extension].join("."));
           // Write file
           await writeFileAsync(filePath, dedent(templateFile.contents));
         })
@@ -130,9 +117,9 @@ export class XcodeSwiftPlaygroundService {
 
   /**
    * Make a Swift Playground path for a given location and file name
-   * @param location: location in which we want to save the playground file.
-   * @param filename: filename of the created or opened playground file.
-   * @param forceCreate: define if we want to force create or not.
+   * @param location location in which we want to save the playground file.
+   * @param filename filename of the created or opened playground file.
+   * @param forceCreate define if we want to force create or not.
    */
   private static async makeSwiftPlaygroundPath(
     location: string,
@@ -143,12 +130,12 @@ export class XcodeSwiftPlaygroundService {
     let iteration = null;
     const targetLocation = untildify(location);
     do {
-      const dateString = new Date().toLocaleDateString("en-CA");
+      const dateString = new Date().toLocaleDateString().replaceAll("/", "-").replaceAll(".", "-");
       const name =
         iteration == null
           ? `${filename}-${dateString}.playground`
           : `${filename}-${dateString}-${iteration}.playground`;
-      path = joinPathComponents(targetLocation, name);
+      path = Path.join(targetLocation, name);
       iteration = iteration == null ? 1 : iteration + 1;
     } while ((await existsAsync(path)) && forceCreate);
     return path;
@@ -157,20 +144,24 @@ export class XcodeSwiftPlaygroundService {
   /**
    * The XCPlayground contents TemplateFile
    * @param platform The XcodeSwiftPlaygroundPlatform
+   * @param swiftVersion The XcodeSwiftPlaygroundSwiftVersion
    * @private
    */
-  private static contentsTemplateFile(platform: XcodeSwiftPlaygroundPlatform): TemplateFile {
+  private static contentsTemplateFile(
+    platform: XcodeSwiftPlaygroundPlatform,
+    swiftVersion: XcodeSwiftPlaygroundSwiftVersion
+  ): TemplateFile {
     return {
       name: "contents",
       extension: "xcplayground",
       contents: `
       <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-      <playground version='5.0' 
-                  target-platform='${platform.toLocaleLowerCase()}' 
+      <playground version='7.0' 
+                  target-platform='${platform.toLowerCase()}' 
+                  swift-version='${swiftVersion}'
                   buildActiveScheme='true' 
                   executeOnSourceChanges='false' 
                   importAppTypes='true'>
-          <timeline fileName='timeline.xctimeline'/>
       </playground>
       `,
     };

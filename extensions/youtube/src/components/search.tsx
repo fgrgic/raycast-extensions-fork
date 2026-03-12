@@ -1,13 +1,4 @@
-import {
-  ActionPanel,
-  Color,
-  getLocalStorageItem,
-  Icon,
-  List,
-  popToRoot,
-  removeLocalStorageItem,
-  setLocalStorageItem,
-} from "@raycast/api";
+import { Action, ActionPanel, Color, Icon, List, LocalStorage, popToRoot } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { formatDateShort } from "../lib/utils";
 
@@ -19,7 +10,7 @@ export interface RecentSearch {
 
 export async function getRecentSearches(key: string): Promise<RecentSearch[] | undefined> {
   try {
-    const store = await getLocalStorageItem(key);
+    const store = await LocalStorage.getItem(key);
     const payload = store?.toString();
     if (payload) {
       const result: RecentSearch[] = [];
@@ -54,19 +45,19 @@ export async function getRecentSearches(key: string): Promise<RecentSearch[] | u
         return result;
       }
     }
-  } catch (error) {
+  } catch {
     // ignore error
   }
   return [];
 }
 
 async function clearRecentSearchesStore(key: string) {
-  await removeLocalStorageItem(key);
+  await LocalStorage.removeItem(key);
 }
 
 async function setRecentSearches(key: string, recentSearches: RecentSearch[]) {
   const payload = JSON.stringify(recentSearches);
-  await setLocalStorageItem(key, payload);
+  await LocalStorage.setItem(key, payload);
 }
 
 async function appendRecentSearchesStore(key: string, search: RecentSearch) {
@@ -89,12 +80,12 @@ async function appendRecentSearchesStore(key: string, search: RecentSearch) {
   }
 }
 
-function NoSearchItem(props: { recentQueries: RecentSearch[] | undefined }): JSX.Element | null {
+function NoSearchItem(props: { recentQueries: RecentSearch[] | undefined }) {
   const rq = props.recentQueries;
   if (rq && rq.length > 0) {
     return null;
   } else {
-    return <List.Item title="No Recent Searches" />;
+    return <List.EmptyView title="No Recent Searches" />;
   }
 }
 
@@ -102,7 +93,7 @@ function SearchItem(props: {
   search: RecentSearch;
   setSearchText: (text: string) => void;
   clearAll?: () => Promise<void>;
-}): JSX.Element {
+}) {
   const handleClear = async () => {
     if (props.clearAll) {
       await props.clearAll();
@@ -115,15 +106,15 @@ function SearchItem(props: {
       accessoryTitle={formatDateShort(props.search.timestamp)}
       actions={
         <ActionPanel>
-          <ActionPanel.Item
+          <Action
             title="Search Again"
             icon={{ source: Icon.Binoculars, tintColor: Color.PrimaryText }}
             onAction={() => props.setSearchText(props.search.text)}
           />
           {props.clearAll && (
-            <ActionPanel.Item
-              title="Clear old Searches"
-              icon={{ source: Icon.XmarkCircle, tintColor: Color.Red }}
+            <Action
+              title="Clear Old Searches"
+              icon={{ source: Icon.XMarkCircle, tintColor: Color.Red }}
               onAction={handleClear}
             />
           )}
@@ -138,7 +129,7 @@ export function RecentSearchesList(props: {
   setRootSearchText: (text: string) => void;
   isLoading?: boolean | undefined;
   clearAll?: () => Promise<void>;
-}): JSX.Element {
+}) {
   const setRootSearchText = props.setRootSearchText;
   const rq = props.recentSearches;
   const isLoading = props.isLoading;
@@ -147,8 +138,8 @@ export function RecentSearchesList(props: {
   }
   return (
     <List onSearchTextChange={setRootSearchText} isLoading={isLoading} throttle={true}>
+      <NoSearchItem recentQueries={rq} />
       <List.Section title="Recently Searched">
-        <NoSearchItem recentQueries={rq} />
         {rq?.map((q) => (
           <SearchItem
             key={`${q.timestamp.toLocaleString()} ${q.text} ${q.uuid}`}
@@ -165,7 +156,7 @@ export function RecentSearchesList(props: {
 export function useRecentSearch(
   key: string,
   uuid: string,
-  setSearchText?: React.Dispatch<React.SetStateAction<string | undefined>>
+  setSearchText?: React.Dispatch<React.SetStateAction<string | undefined>>,
 ): {
   data: RecentSearch[] | undefined;
   appendRecentSearches: (text: string) => Promise<void>;
@@ -192,7 +183,7 @@ export function useRecentSearch(
         if (!cancel) {
           setData(d);
         }
-      } catch (error) {
+      } catch {
         // ignore
       }
     }

@@ -1,18 +1,17 @@
 # Typefully Changelog
 
-## [Added Commands] - 2022-06-27
+## [Cleanup] - 2026-02-04
 
-- Add ability to view scheduled drafts
-- Add ability to view posted drafts
+- Remove store submission checklist from README
 
-## [Updated Command Functionality] - 2022-06-19
+## [Initial Release] - 2026-02-04
 
-- Updated Open Typefully command to use default browser
+New Raycast extension for Typefully, built on the Typefully API v2.
 
-## [Initial Version] - 2022-06-19
+- Create drafts for X, LinkedIn, Threads, Bluesky, and Mastodon
+- Split content into threads using `---` delimiter
+- Schedule drafts or publish immediately
+- Browse unpublished, scheduled, and published drafts
+- Manage social sets and set a default for quick access
+- AI tools for Raycast AI Chat: create, list, and schedule drafts conversationally
 
-- Add required preferences
-- Add support for posting drafts
-- Add support for scheduling drafts to allocated time
-- Add support for scheduling drafts to next available slot
-- Add ability to quick open Typefully

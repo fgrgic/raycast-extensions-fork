@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List, open, showHUD } from "@raycast/api";
+import { ActionPanel, List } from "@raycast/api";
 import { ActionOpenPreferences } from "./action-open-preferences";
 
 export function EmptyView(props: { title: string; extensionPreferences: boolean }) {
@@ -6,7 +6,7 @@ export function EmptyView(props: { title: string; extensionPreferences: boolean 
   return (
     <List.EmptyView
       title={title}
-      icon={"list-icon.svg"}
+      icon={"empty-icon.png"}
       actions={<ActionPanel>{extensionPreferences && <ActionOpenPreferences />}</ActionPanel>}
     />
   );

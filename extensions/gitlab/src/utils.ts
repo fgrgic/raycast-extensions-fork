@@ -1,6 +1,6 @@
-import { Clipboard, Image, List, LocalStorage, showToast, Toast } from "@raycast/api";
+import { Clipboard, Image, LocalStorage, showToast, Toast } from "@raycast/api";
 import { Project } from "./gitlabapi";
-import { GitLabIcons } from "./icons";
+import { getSVGText, GitLabIcons } from "./icons";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import { constants } from "fs";
@@ -8,11 +8,10 @@ import * as crypto from "crypto";
 import TimeAgo from "javascript-time-ago";
 import en from "javascript-time-ago/locale/en.json";
 import urljoin from "url-join";
+import { emojiSymbol } from "./components/status/utils";
 
 TimeAgo.addDefaultLocale(en);
 const timeAgo = new TimeAgo("en-US");
-
-/* eslint-disable @typescript-eslint/no-explicit-any,@typescript-eslint/explicit-module-boundary-types,no-useless-escape */
 
 export function projectIconUrl(project: Project): string | undefined {
   let result: string | undefined;
@@ -25,15 +24,26 @@ export function projectIconUrl(project: Project): string | undefined {
   return result;
 }
 
+export function getFirstChar(text: string): string {
+  const firstChar = text.codePointAt(0);
+
+  return firstChar ? String.fromCodePoint(firstChar) : "";
+}
+
 export function projectIcon(project: Project): Image.ImageLike {
+  const svgSource = () => {
+    return getSVGText(getFirstChar(project.name)) || GitLabIcons.project;
+  };
   let result: string = GitLabIcons.project;
   // TODO check also namespace for icon
   if (project.avatar_url) {
     result = project.avatar_url;
   } else if (project.owner && project.owner.avatar_url) {
     result = project.owner.avatar_url;
+  } else {
+    result = svgSource();
   }
-  return { source: result, mask: Image.Mask.Circle };
+  return { source: result, mask: Image.Mask.Circle, fallback: svgSource() };
 }
 
 export function toDateString(d: string): string {
@@ -41,6 +51,11 @@ export function toDateString(d: string): string {
   const mo = new Intl.DateTimeFormat("en", { month: "short" }).format(date);
   const da = new Intl.DateTimeFormat("en", { day: "2-digit" }).format(date);
   return `${da}. ${mo}`;
+}
+
+export function toLongDateString(d: string) {
+  const date = new Date(d);
+  return date.toLocaleDateString();
 }
 
 export function getIdFromGqlId(id: string): number {
@@ -52,7 +67,7 @@ export function currentSeconds(): number {
   return Date.now() / 1000;
 }
 
-export async function getCacheObject(key: string, seconds: number): Promise<any> {
+export async function getCacheObject<T>(key: string, seconds: number): Promise<T | undefined> {
   console.log(`get cache object ${key} from store`);
   const cache = await LocalStorage.getItem(key);
   console.log("after local storage");
@@ -70,7 +85,7 @@ export async function getCacheObject(key: string, seconds: number): Promise<any>
   return undefined;
 }
 
-export async function setCacheObject(key: string, payload: any): Promise<void> {
+export async function setCacheObject<T>(key: string, payload: T): Promise<void> {
   const cache_data = {
     timestamp: currentSeconds(),
     payload: payload,
@@ -93,7 +108,7 @@ export function fileExistsSync(filename: string): boolean {
   try {
     fsSync.accessSync(filename, constants.F_OK);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -113,13 +128,19 @@ export function optimizeMarkdownText(text: string, baseUrl?: string): string {
   // <br> to markdown new line
   result = replaceAll(result, /<br>/g, "  \n");
 
+  // replace all emojis
+  result = result.replace(/:(\w+):/g, (original, emoji) => emojiSymbol(emoji) ?? original);
+
+  // remove inline HTML tags
+  result = replaceAll(result, /<[^>]+>/g, "");
+
   if (baseUrl) {
     // replace relative links with absolute ones
     try {
-      const regexMdLinks = /\[([^\[]+)\](\(.*\))/gm;
+      const regexMdLinks = /\[([^[]+)\](\(.*\))/gm;
       const matches = result.match(regexMdLinks);
       if (matches) {
-        const singleMatch = /\[([^\[]+)\]\((.*)\)/;
+        const singleMatch = /\[([^[]+)\]\((.*)\)/;
         for (let i = 0; i < matches.length; i++) {
           const text = singleMatch.exec(matches[i]);
           if (text) {
@@ -133,8 +154,8 @@ export function optimizeMarkdownText(text: string, baseUrl?: string): string {
           }
         }
       }
-    } catch (error) {
-      // ignore errors
+    } catch {
+      // Do nothing
     }
   }
 
@@ -147,11 +168,11 @@ export function hashString(text: string): string {
   return sha256.digest("hex");
 }
 
-export function hashRecord(rec: Record<string, any>, prefix?: string | undefined): string {
+export function hashRecord(rec: Record<string, unknown>, prefix?: string | undefined): string {
   const sha256 = crypto.createHash("sha256");
   Object.entries(rec)
     .sort()
-    .forEach((k: any, v: any) => {
+    .forEach(([k, v]) => {
       sha256.update(`${k}${v}`);
     });
   const h = sha256.digest("hex");
@@ -163,11 +184,14 @@ export function hashRecord(rec: Record<string, any>, prefix?: string | undefined
 }
 
 export function capitalizeFirstLetter(name: string): string {
+  if (!name || name.length <= 0) {
+    return name;
+  }
   return name.replace(/^./, name[0].toUpperCase());
 }
 
-export function toFormValues(values: any): Record<string, any> {
-  const val: Record<string, any> = {};
+export function toFormValues(values: Record<string, unknown>): Record<string, string> {
+  const val: Record<string, string> = {};
   for (const [k, v] of Object.entries(values)) {
     if (v) {
       if (Array.isArray(v)) {
@@ -177,7 +201,7 @@ export function toFormValues(values: any): Record<string, any> {
           continue;
         }
       } else {
-        val[k] = v;
+        val[k] = String(v);
       }
     }
   }
@@ -248,7 +272,14 @@ export function tokenizeQueryText(query: string | undefined, namedKeywords: stri
 }
 
 export function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "unknown error";
+  if (error instanceof Error) {
+    return error.message;
+  } else {
+    if (typeof error === "string") {
+      return error as string;
+    }
+    return "Unknown Error";
+  }
 }
 
 export function formatDate(input: Date | string): string {
@@ -264,27 +295,6 @@ export function daysInSeconds(days: number): number {
   return days * 24 * 60 * 60;
 }
 
-export function ensureCleanAccessories(
-  accessories: List.Item.Accessory[] | undefined
-): List.Item.Accessory[] | undefined {
-  if (accessories) {
-    if (accessories.length <= 0) {
-      return undefined;
-    }
-    const result: List.Item.Accessory[] = [];
-    for (const a of accessories) {
-      if (a.icon || a.text) {
-        result.push(a);
-      }
-    }
-    if (result.length <= 0) {
-      return undefined;
-    }
-    return result;
-  }
-  return undefined;
-}
-
 export function showErrorToast(message: string, title?: string): Promise<Toast> {
   const t = title || "Something went wrong";
   return showToast({
@@ -297,4 +307,20 @@ export function showErrorToast(message: string, title?: string): Promise<Toast> 
       shortcut: { modifiers: ["cmd", "shift"], key: "c" },
     },
   });
+}
+
+export const isWindows = process.platform === "win32";
+
+export function shortify(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  if (maxLength <= 3) {
+    return text.slice(0, maxLength);
+  }
+  return text.slice(0, maxLength - 3) + "...";
+}
+
+export function isNumber(value?: unknown): value is number {
+  return typeof value === "number" && !isNaN(value);
 }

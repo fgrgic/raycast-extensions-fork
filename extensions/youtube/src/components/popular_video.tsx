@@ -1,20 +1,34 @@
-import { List, showToast, ToastStyle } from "@raycast/api";
+import { getPreferenceValues, showToast, Toast } from "@raycast/api";
+import { useEffect, useState } from "react";
+import { Preferences } from "../lib/types";
 import { getErrorMessage } from "../lib/utils";
-import { getPopularVideos, useRefresher, Video } from "../lib/youtubeapi";
-import { VideoListItem } from "./video";
+import { getPopularVideos, Video } from "../lib/youtubeapi";
+import { ListOrGrid } from "./listgrid";
+import { VideoItem } from "./video";
 
 export function PopularVideoList() {
-  const { data, error, isLoading } = useRefresher<Video[] | undefined>(async () => {
-    return await getPopularVideos();
+  const { griditemsize } = getPreferenceValues<Preferences>();
+  const [data, setData] = useState<Video[] | undefined>();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const videos = await getPopularVideos();
+        setData(videos);
+      } catch (error) {
+        showToast(Toast.Style.Failure, "Could not search popular videos", getErrorMessage(error));
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
-  if (error) {
-    showToast(ToastStyle.Failure, "Could not search popular Videos", getErrorMessage(error));
-  }
+
   return (
-    <List isLoading={isLoading}>
+    <ListOrGrid isLoading={isLoading} columns={griditemsize} aspectRatio={"4/3"}>
       {data?.map((v) => (
-        <VideoListItem key={v.id} video={v} />
+        <VideoItem key={v.id} video={v} />
       ))}
-    </List>
+    </ListOrGrid>
   );
 }

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { getErrorMessage, showErrorToast } from "../utils";
 import { GitLabOpenInBrowserAction } from "./actions";
 
-export function UserList(): JSX.Element {
+export function UserList() {
   const [searchText, setSearchText] = useState<string>();
   const { users, error, isLoading } = useSearch(searchText);
 
@@ -22,13 +22,13 @@ export function UserList(): JSX.Element {
   );
 }
 
-export function UserListItem(props: { user: User }): JSX.Element {
+export function UserListItem(props: { user: User }) {
   const user = props.user;
   return (
     <List.Item
       id={user.id.toString()}
       title={user.name}
-      subtitle={"#" + user.username}
+      subtitle={user.username}
       icon={{ source: user.avatar_url, mask: Image.Mask.Circle }}
       actions={
         <ActionPanel>

@@ -1,48 +1,70 @@
-import { List, Action, ActionPanel, Icon, Color, useNavigation, Toast, showToast } from "@raycast/api";
+import { List, Action, ActionPanel, Icon, Color, Toast, showToast } from "@raycast/api";
 import { moduleitem } from "../utils/types";
-import { appendRecentModuleItem, clearRecentModuleItems } from "../utils/recent";
+import { PinActions, RecentActions, useModuleStore } from "../utils/store";
 import { Icons, getIsCodeFile } from "../utils/utils";
+import { getPreferenceValues } from "@raycast/api";
 import open from "open";
+
+const preferences = getPreferenceValues();
 
 export const ModuleItem = (props: {
   id: number;
   url: string;
   item: moduleitem;
-  show: boolean;
-  getRecentItems: () => Promise<void>;
+  pinned?: boolean;
+  recent?: boolean;
 }) => {
-  const append = async () => await appendRecentModuleItem(props.id, props.item);
-  const { pop } = useNavigation();
+  const { addToRecent } = useModuleStore();
 
-  return (
+  return props.item.type === "SubHeader" && props.item.url === undefined ? (
     <List.Item
+      id={props.item.id.toString()}
+      title={props.item.name}
+      actions={
+        <ActionPanel>
+          <Action.CopyToClipboard title={"Copy Title"} content={props.item.name} />
+        </ActionPanel>
+      }
+    />
+  ) : (
+    <List.Item
+      id={`${props.pinned ? "pin" : props.recent ? "recent" : ""}${props.item.id}`}
       title={props.item.name}
       icon={{
         source: getIsCodeFile(props.item.name)
           ? Icons["Code"]
           : props.item.passcode
-          ? Icons["Passcode"]
-          : props.item.type in Icons
-          ? Icons[props.item.type]
-          : Icon.ExclamationMark,
+            ? Icons["Passcode"]
+            : props.item.type in Icons
+              ? Icons[props.item.type]
+              : Icon.ExclamationMark,
       }}
       actions={
         <ActionPanel>
           <Action.OpenInBrowser
             url={props.item.url}
             icon={{ source: Icon.Link }}
-            onOpen={async () => {
-              await append();
-              await props.getRecentItems();
-            }}
+            onOpen={() => addToRecent(props.id, props.item)}
           />
-          {props.item.download && (
+          {props.item.content_id && (
             <Action
               title="Download File"
-              onAction={async () => {
-                await open(props.item.download, { background: true });
-                await append();
-                await props.getRecentItems();
+              onAction={() => {
+                open(
+                  `https://${preferences.domain}/courses/${props.id}/files/${props.item.content_id}/download?download_frd=1`,
+                  { background: true },
+                )
+                  .then(() => {
+                    showToast(Toast.Style.Success, "Download Started");
+                    addToRecent(props.id, props.item);
+                  })
+                  .catch((error) => {
+                    showToast({
+                      title: "Download Failed",
+                      message: error.message,
+                      style: Toast.Style.Failure,
+                    });
+                  });
               }}
               icon={{ source: Icon.Download }}
             />
@@ -52,22 +74,19 @@ export const ModuleItem = (props: {
               <Action.CopyToClipboard
                 title="Copy Passcode"
                 content={props.item.passcode}
-                onCopy={async () => {
-                  await append();
-                  await props.getRecentItems();
-                }}
+                onCopy={() => addToRecent(props.id, props.item)}
               />
               <Action.Paste
                 title="Paste Passcode"
                 content={props.item.passcode}
-                shortcut={{ modifiers: ["cmd"], key: "p" }}
-                onPaste={async () => {
-                  await append();
-                  await props.getRecentItems();
-                }}
+                onPaste={() => addToRecent(props.id, props.item)}
               />
             </ActionPanel.Section>
           )}
+          <ActionPanel.Section>
+            <PinActions id={props.id} item={props.item} isPinned={props.pinned} />
+            {props.recent && <RecentActions id={props.id} item={props.item} />}
+          </ActionPanel.Section>
           <ActionPanel.Section>
             <Action.OpenInBrowser
               title="Open Home Page"
@@ -75,18 +94,6 @@ export const ModuleItem = (props: {
               url={props.url}
               shortcut={{ modifiers: ["cmd"], key: "h" }}
             />
-            {props.show && (
-              <Action
-                title="Clear Recent Items"
-                onAction={async () => {
-                  await clearRecentModuleItems(props.id);
-                  pop();
-                  showToast(Toast.Style.Success, "Recent Items Cleared");
-                }}
-                icon={{ source: Icon.Trash, tintColor: Color.Red }}
-                shortcut={{ modifiers: ["cmd"], key: "t" }}
-              />
-            )}
           </ActionPanel.Section>
         </ActionPanel>
       }

@@ -1,15 +1,21 @@
-import { Action, ActionPanel, closeMainWindow, Detail, List, open, popToRoot, showToast, Toast } from "@raycast/api";
+import { Action, ActionPanel, closeMainWindow, getPreferenceValues, List, open, popToRoot } from "@raycast/api";
 
-import { Vault } from "./utils/interfaces";
-import { useObsidianVaults, vaultPluginCheck } from "./utils/utils";
-import { NoVaultFoundMessage } from "./components/NoVaultFoundMessage";
-
-const getTarget = (vaultName: string) => {
-  return "obsidian://advanced-uri?vault=" + encodeURIComponent(vaultName) + "&daily=true";
-};
+import { NoVaultFoundMessage } from "./components/Notifications/NoVaultFoundMessage";
+import AdvancedURIPluginNotInstalled from "./components/Notifications/AdvancedURIPluginNotInstalled";
+import { useObsidianVaults, useVaultPluginCheck } from "./utils/hooks";
+import { DailyNotePreferences } from "./utils/preferences";
+import { Obsidian, ObsidianTargetType } from "@/obsidian";
 
 export default function Command() {
   const { vaults, ready } = useObsidianVaults();
+  const { vaultName } = getPreferenceValues<DailyNotePreferences>();
+  const preselectedVault = vaults.find((vault) => vault.name === vaultName);
+
+  const { vaultsWithPlugin } = useVaultPluginCheck({
+    vaults: vaults,
+    communityPlugins: ["obsidian-advanced-uri"],
+    corePlugins: ["daily-notes"],
+  });
 
   if (!ready) {
     return <List isLoading={true}></List>;
@@ -17,25 +23,14 @@ export default function Command() {
     return <NoVaultFoundMessage />;
   }
 
-  const [vaultsWithPlugin, vaultsWithoutPlugin] = vaultPluginCheck(vaults, "obsidian-advanced-uri");
-
-  if (vaultsWithoutPlugin.length > 0) {
-    showToast({
-      title: "Vaults without Daily Note plugin:",
-      message: vaultsWithoutPlugin.map((vault: Vault) => vault.name).join(", "),
-      style: Toast.Style.Failure,
-    });
-  }
-
   if (vaultsWithPlugin.length == 0) {
-    const text =
-      "# Advanced URI plugin not installed.\nThis command requires the [Advanced URI plugin](https://obsidian.md/plugins?id=obsidian-advanced-uri) for Obsidian.  \n  \n Install it through the community plugins list.";
-
-    return <Detail navigationTitle="Advanced URI plugin not installed" markdown={text} />;
+    return <AdvancedURIPluginNotInstalled />;
   }
 
-  if (vaultsWithPlugin.length == 1) {
-    open(getTarget(vaultsWithPlugin[0].name));
+  if (preselectedVault || vaultsWithPlugin.length == 1) {
+    const vaultToUse = preselectedVault || vaultsWithPlugin[0];
+    const target = Obsidian.getTarget({ type: ObsidianTargetType.DailyNote, vault: vaultToUse });
+    open(target);
     popToRoot();
     closeMainWindow();
   }
@@ -48,7 +43,10 @@ export default function Command() {
           key={vault.key}
           actions={
             <ActionPanel>
-              <Action.Open title="Daily Note" target={getTarget(vault.name)} />
+              <Action.Open
+                title="Daily Note"
+                target={Obsidian.getTarget({ type: ObsidianTargetType.DailyNote, vault: vault })}
+              />
             </ActionPanel>
           }
         />

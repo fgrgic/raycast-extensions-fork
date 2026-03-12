@@ -1,9 +1,9 @@
-import { ActionPanel, List, OpenInBrowserAction, showToast, ToastStyle, ImageMask, Color } from "@raycast/api";
+import { ActionPanel, List, showToast, Color, Action, Image, Toast } from "@raycast/api";
 import { useState, useEffect } from "react";
 
-import { Repository, Pipeline } from "./interface";
+import { Repository } from "./interface";
 import { PullRequest } from "../pullRequests/interface";
-import { icon } from "../../helpers/icon";
+
 import { pullRequestsGetQuery } from "./../../queries";
 
 interface State {
@@ -11,28 +11,28 @@ interface State {
   error?: Error;
 }
 
-export function PullRequestsList(props: { repo: Repository; pageNumber: number }): JSX.Element {
+export function PullRequestsList(props: { repo: Repository; pageNumber: number }) {
   const [state, setState] = useState<State>({});
-  const [pageNumber, setPageNumber] = useState<number>(1);
 
   useEffect(() => {
     async function fetchPRs() {
       try {
-        const { data } = await pullRequestsGetQuery(props.repo.slug, pageNumber);
+        const { data } = await pullRequestsGetQuery(props.repo.slug);
 
-        const prs = data.values.map((pr: any) => ({
-          id: pr.id as number,
-          title: pr.title as string,
-          repo: {
-            name: pr.destination.repository.name as string,
-            fullName: pr.destination.repository.full_name as string,
-          },
-          commentCount: pr.comment_count as number,
-          author: {
-            url: pr.author.links.avatar.href as string,
-            nickname: pr.author.nickname as string,
-          },
-        }));
+        const prs =
+          data.values?.map((pr) => ({
+            id: pr.id as number,
+            title: pr.title as string,
+            repo: {
+              name: pr.destination?.repository?.name as string,
+              fullName: pr?.destination?.repository?.full_name as string,
+            },
+            commentCount: pr.comment_count as number,
+            author: {
+              url: pr.author?.links?.avatar?.href as string,
+              nickname: pr.author?.nickname as string,
+            },
+          })) ?? [];
         setState({ pullRequests: prs });
       } catch (error) {
         setState({ error: error instanceof Error ? error : new Error("Something went wrong") });
@@ -43,7 +43,11 @@ export function PullRequestsList(props: { repo: Repository; pageNumber: number }
   }, []);
 
   if (state.error) {
-    showToast(ToastStyle.Failure, "Failed loading repositories", state.error.message);
+    showToast({
+      style: Toast.Style.Failure,
+      title: "Failed loading repositories",
+      message: state.error.message,
+    });
   }
 
   return (
@@ -54,19 +58,23 @@ export function PullRequestsList(props: { repo: Repository; pageNumber: number }
             key={pr.id}
             title={pr.title}
             subtitle={pr.repo?.fullName}
-            accessoryTitle={`${pr.commentCount} 💬  ·  Created by ${pr.author.nickname}`}
-            accessoryIcon={{ source: pr.author.url, mask: ImageMask.Circle }}
             icon={{ source: "icon-pr.png", tintColor: Color.PrimaryText }}
             actions={
               <ActionPanel>
                 <ActionPanel.Section>
-                  <OpenInBrowserAction
+                  <Action.OpenInBrowser
                     title="Open Pull Request in Browser"
                     url={`https://bitbucket.org/${pr.repo.fullName}/pull-requests/${pr.id}`}
                   />
                 </ActionPanel.Section>
               </ActionPanel>
             }
+            accessories={[
+              {
+                text: `${pr.commentCount} 💬  ·  Created by ${pr.author.nickname}`,
+                icon: { source: pr.author.url, mask: Image.Mask.Circle },
+              },
+            ]}
           />
         ))}
       </List.Section>

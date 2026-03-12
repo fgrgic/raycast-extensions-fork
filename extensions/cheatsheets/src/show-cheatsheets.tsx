@@ -1,28 +1,10 @@
-import { Action, ActionPanel, Detail, List } from '@raycast/api';
-import { useEffect, useState } from 'react';
+import { Action, ActionPanel, Icon, List } from "@raycast/api";
+import { useListFiles } from "./hooks";
+import { urlFor } from "./utils";
+import { SheetView } from "./components";
 
-import Service from './service';
-import {
-  getSheets,
-  stripFrontmatter,
-  stripTemplateTags,
-  formatTables,
-} from './utils';
-
-function Command() {
-  const [sheets, setSheets] = useState<string[]>([]);
-  const [isLoading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchList() {
-      const files = await Service.listFiles();
-      const sheets = getSheets(files);
-      setSheets(sheets);
-      setLoading(false);
-    }
-
-    fetchList();
-  }, []);
+export default function Command() {
+  const { isLoading, data: sheets } = useListFiles();
 
   return (
     <List isLoading={isLoading}>
@@ -30,10 +12,8 @@ function Command() {
         <List.Item
           actions={
             <ActionPanel>
-              <Action.Push
-                title="Open Cheatsheet"
-                target={<SheetView slug={sheet} />}
-              />
+              <Action.Push title="Open Cheatsheet" icon={Icon.Window} target={<SheetView slug={sheet} />} />
+              <Action.OpenInBrowser url={urlFor(sheet)} />
             </ActionPanel>
           }
           key={sheet}
@@ -43,30 +23,3 @@ function Command() {
     </List>
   );
 }
-
-interface SheetProps {
-  slug: string;
-}
-
-function SheetView(props: SheetProps) {
-  const [sheet, setSheet] = useState('');
-  const [isLoading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchSheet() {
-      const sheetMarkdown = await Service.getSheet(props.slug);
-      const sheet = formatTables(
-        stripTemplateTags(stripFrontmatter(sheetMarkdown)),
-      );
-
-      setSheet(sheet);
-      setLoading(false);
-    }
-
-    fetchSheet();
-  }, []);
-
-  return <Detail isLoading={isLoading} markdown={sheet} />;
-}
-
-export default Command;

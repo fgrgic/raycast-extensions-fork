@@ -1,20 +1,28 @@
-import { Action, ActionPanel, Clipboard, Form, getPreferenceValues, Icon, open, showToast, Toast } from "@raycast/api";
-import React, { useEffect, useState } from "react";
+import { Action, ActionPanel, Clipboard, Form, Icon, open, showToast, Toast } from "@raycast/api";
+import React, { useEffect, useMemo, useState } from "react";
 import { shortenLinkWithSlug } from "./utils/axios-utils";
-import { alertDialog, getDefaultDomain } from "./hooks/hooks";
 import { isEmpty } from "./utils/common-utils";
 import { ActionOpenPreferences } from "./components/action-open-preferences";
 import { ActionGoShortIo } from "./components/action-go-short-io";
 import { fetchLink } from "./utils/input-item";
+import { authFetchLink } from "./types/preferences";
+import { useDefaultDomain } from "./hooks/useDefaultDomain";
+import { alertDialog } from "./components/alert-dialog";
+import { Domain } from "./types/types";
 import Style = Toast.Style;
-import { Preferences } from "./types/preferences";
 
-export default function ShortenLink(props: { paraDomain?: string }) {
-  const paraDomain = typeof props.paraDomain !== "undefined" ? props.paraDomain : "";
-  const { authFetchLink } = getPreferenceValues<Preferences>();
-  const { defaultDomain, domainLoading } = getDefaultDomain(paraDomain);
+export default function ShortenLink(props: { defaultDomain?: Domain }) {
+  const { data: defaultDomainData, isLoading: domainLoading } = useDefaultDomain(props.defaultDomain);
+  const defaultDomain = useMemo(() => {
+    if (defaultDomainData) {
+      return defaultDomainData.hostname;
+    } else {
+      return "";
+    }
+  }, [defaultDomainData]);
 
   const [originalLink, setOriginalLink] = useState<string>("");
+  const [originalLinkError, setOriginalLinkError] = useState<string | undefined>();
   const [slug, setSlug] = useState<string>("");
   const [title, setTitle] = useState<string>("");
   const [shortLink, setShortLink] = useState<string>("");
@@ -45,7 +53,7 @@ export default function ShortenLink(props: { paraDomain?: string }) {
                 return;
               }
               if (isEmpty(originalLink)) {
-                await showToast(Style.Failure, "Error.", "Please enter a link to shorten.");
+                setOriginalLinkError("The field should't be empty!");
                 return;
               }
               await showToast(Style.Animated, "Shortening...");
@@ -81,7 +89,25 @@ export default function ShortenLink(props: { paraDomain?: string }) {
       }
     >
       <Form.Description title={"Domain"} text={defaultDomain} />
-      <Form.TextField id={"Original Link"} title={"Original Link"} value={originalLink} onChange={setOriginalLink} />
+      <Form.TextField
+        id={"Original Link"}
+        title={"Original Link"}
+        value={originalLink}
+        error={originalLinkError}
+        onChange={(newValue) => {
+          setOriginalLink(newValue);
+          if (newValue.length > 0) {
+            setOriginalLinkError(undefined);
+          }
+        }}
+        onBlur={(event) => {
+          if (event.target.value?.length == 0) {
+            setOriginalLinkError("The field should't be empty!");
+          } else {
+            setOriginalLinkError(undefined);
+          }
+        }}
+      />
       <Form.TextField id={"Slug"} title={"Slug"} placeholder={"Optional"} value={slug} onChange={setSlug} />
       <Form.TextField id={"Title"} title={"Title"} placeholder={"Optional"} value={title} onChange={setTitle} />
       {!isEmpty(shortLink) && <Form.Description title={"Short Link"} text={shortLink} />}

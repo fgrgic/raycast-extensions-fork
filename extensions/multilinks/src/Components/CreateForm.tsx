@@ -1,29 +1,18 @@
-import {
-  Form,
-  ActionPanel,
-  Action,
-  showToast,
-  Toast,
-  getApplications,
-  Application,
-  useNavigation,
-  Icon,
-} from "@raycast/api";
-import { useRef, useEffect, useState } from "react";
+import { Form, ActionPanel, Action, showToast, Toast, useNavigation, Icon } from "@raycast/api";
+import { useRef } from "react";
 import { LinkItem } from "../types";
 import Service from "./../Service";
 import MultiLinks from "../multi-links";
+import { useBrowsers } from "../hooks/useBrowsers";
+import BrowserDropdown from "./BrowserDropdown";
 
 function CreateForm(props: { data?: LinkItem; onCreate?: () => void }) {
-  const [browsers, setBrowsers] = useState<Application[]>([
-    { name: "Google Chrome", bundleId: "com.google.Chrome", path: "" },
-  ]);
+  const initialValues = props.data ?? { name: "", links: "", id: "", browser: "com.google.Chrome" };
+  const { browsers, selectedBrowser, setSelectedBrowser } = useBrowsers(initialValues.browser);
   const nameFieldRef = useRef<Form.TextField>(null);
   const linksFieldRef = useRef<Form.TextArea>(null);
-  const initialValues = props.data ?? { name: "", links: "", id: "", browser: "com.google.Chrome" };
   const mode = props.data ? "edit" : "create";
   const { pop, push } = useNavigation();
-  let updateBrowserList = true;
 
   async function handleSubmit(values: LinkItem) {
     if (values.name.trim() === "") {
@@ -61,24 +50,6 @@ function CreateForm(props: { data?: LinkItem; onCreate?: () => void }) {
     }
   }
 
-  useEffect(() => {
-    (async () => {
-      const installedApplications = await getApplications();
-
-      const browserIds = ["com.google.Chrome", "com.apple.Safari", "com.brave.Browser"];
-
-      const browsers = installedApplications.filter((app) => browserIds.includes(String(app.bundleId)));
-
-      if (updateBrowserList) {
-        setBrowsers(browsers);
-      }
-    })();
-
-    return () => {
-      updateBrowserList = false;
-    };
-  });
-
   return (
     <Form
       actions={
@@ -108,11 +79,7 @@ function CreateForm(props: { data?: LinkItem; onCreate?: () => void }) {
         ref={linksFieldRef}
       />
 
-      <Form.Dropdown id="browser" title="Open with" defaultValue={initialValues.browser}>
-        {browsers.map((app) => (
-          <Form.Dropdown.Item key={app.bundleId} value={String(app.bundleId)} title={app.name} />
-        ))}
-      </Form.Dropdown>
+      <BrowserDropdown browsers={browsers} selectedBrowser={selectedBrowser} onBrowserChange={setSelectedBrowser} />
     </Form>
   );
 }

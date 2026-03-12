@@ -1,38 +1,37 @@
-import { Detail, Action, ActionPanel, showToast, Toast } from "@raycast/api";
+import { Action, ActionPanel, Detail, showToast, Toast } from "@raycast/api";
+import { loadFront } from "yaml-front-matter";
+
 import { TopicType } from "./types/GithubType";
-import YamlFront from "./yaml-front-matter";
-import { useEffect, useState } from "react";
 import { getPageFromCache, checkForUpdates } from "./services/NextjsPage";
+import { usePromise } from "@raycast/utils";
 
-const TopicDetail = (props: { topic: TopicType }) => {
-  const [mark, setMark] = useState("");
-
-  useEffect(() => {
-    async function getPageContent() {
-      const cached_data = await getPageFromCache(props.topic).catch((err) => {
-        console.log("Failed to fetch data!");
-      });
-
-      if (cached_data) {
-        const parsed = YamlFront.loadFront(cached_data);
-        setMark(parsed.__content);
-      }
-
+const TopicDetail = (props: { topic: TopicType; url: string }) => {
+  const { isLoading, data: markdown } = usePromise(
+    async () => {
+      const cached_data = await getPageFromCache(props.topic);
       const updated_data = await checkForUpdates(props.topic);
-      if (updated_data) {
-        const parsed = YamlFront.loadFront(updated_data);
-        setMark(parsed.__content);
-      }
-    }
-    getPageContent();
-  }, []);
-
-  if (!mark) return <Detail navigationTitle={props.topic.title} isLoading />;
+      const parsed = loadFront(updated_data || cached_data || "");
+      return parsed.__content;
+    },
+    [],
+    {
+      async onData() {
+        await showToast(Toast.Style.Success, `Fetched item`);
+      },
+    },
+  );
 
   return (
-    <>
-      <Detail navigationTitle={props.topic.title} markdown={mark} />
-    </>
+    <Detail
+      isLoading={isLoading}
+      navigationTitle={props.topic.title}
+      markdown={markdown || ""}
+      actions={
+        <ActionPanel>
+          <Action.OpenInBrowser icon="command-icon.png" url={props.url} />
+        </ActionPanel>
+      }
+    />
   );
 };
 

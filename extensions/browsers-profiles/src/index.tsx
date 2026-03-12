@@ -1,12 +1,15 @@
-import { ActionPanel, List, Icon, Action } from "@raycast/api";
+import { ActionPanel, List, Icon, Action, closeMainWindow, getPreferenceValues } from "@raycast/api";
 
 import { getFirefoxProfiles } from "./lib/firefox";
 import { getChromiumProfiles } from "./lib/chromium";
 import { launchBrowser } from "./lib/browsers";
 
 export default function Command() {
-  const chromiumProfiles = getChromiumProfiles();
-  const firefoxProfiles = getFirefoxProfiles();
+  const preferences = getPreferenceValues();
+  const enabledBrowsers = preferences["browsers.filter"].split(",");
+
+  const chromiumProfiles = getChromiumProfiles(enabledBrowsers);
+  const firefoxProfiles = getFirefoxProfiles(enabledBrowsers);
 
   const browsers = [...chromiumProfiles, ...firefoxProfiles];
 
@@ -16,16 +19,17 @@ export default function Command() {
         <List.Section key={`browser-section-${index}`} title={browser.name}>
           {browser.profiles.map((profile, pindex) => (
             <List.Item
-              key={`firefox-profile-${pindex}`}
+              key={`browser-profile-${pindex}`}
               icon={{ source: `icons/${profile.icon}` }}
-              title={profile.name}
+              title={profile.label}
               accessories={[{ text: "Launch this profile", icon: Icon.Globe }]}
               actions={
                 <ActionPanel>
                   <Action
                     title="Open Browser"
-                    onAction={() => {
+                    onAction={async () => {
                       launchBrowser(profile.type, profile.app, profile.path);
+                      await closeMainWindow({ clearRootSearch: true });
                     }}
                   />
                 </ActionPanel>

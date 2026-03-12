@@ -10,8 +10,14 @@ export interface Track {
   artist: string;
   album: string;
   duration: string;
+  favorited?: string;
   state?: PlayerState;
 }
+
+export type MenuBarSnapshot =
+  | { kind: "not-running" }
+  | { kind: "no-track"; playerState: PlayerState }
+  | { kind: "ok"; track: Readonly<Track>; playerState: PlayerState };
 
 export interface Playlist {
   id: string;
@@ -29,4 +35,19 @@ export interface Album {
   name: string;
   artist: string;
   count?: string;
+}
+
+export interface ScriptError extends Error {
+  shortMessage: string;
+  command: string;
+  failed: boolean;
+}
+
+export const ScriptError = {
+  is: (error: Error): error is ScriptError => "shortMessaage" in error,
+};
+
+export interface Preferences {
+  volumeSteps: string;
+  disableHUD: boolean;
 }

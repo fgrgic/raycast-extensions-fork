@@ -1,5 +1,5 @@
-export interface Preferences {
-  actionAfterDecoration: string;
-  itemLayout: string;
-  itemSize: string;
-}
+import { getPreferenceValues } from "@raycast/api";
+
+export const { fontFallback, actionAfterDecoration, itemLayout, columns } = getPreferenceValues<
+  ExtensionPreferences & Preferences.DecorateTextWithFont
+>();

@@ -1,6 +1,9 @@
 // codes from https://raw.githubusercontent.com/chubin/wttr.in/master/lib/constants.py
 
-export function getIcon(weatherCode: string): string {
+export function getWeatherCodeIcon(weatherCode: string | undefined): string {
+  if (!weatherCode) {
+    return "";
+  }
   const code = WWO_CODE[weatherCode] || "";
   const ico = WEATHER_SYMBOL[code] || WEATHER_SYMBOL["Unknown"];
   return ico;
@@ -65,52 +68,28 @@ export const WWO_CODE: { [key: string]: string } = {
 };
 
 export const WEATHER_SYMBOL: { [key: string]: string } = {
-  Unknown: "✨",
-  Cloudy: "☁️",
-  Fog: "🌫",
-  HeavyRain: "🌧",
-  HeavyShowers: "🌧",
-  HeavySnow: "❄️",
-  HeavySnowShowers: "❄️",
-  LightRain: "🌦",
-  LightShowers: "🌦",
-  LightSleet: "🌧",
-  LightSleetShowers: "🌧",
-  LightSnow: "🌨",
-  LightSnowShowers: "🌨",
-  PartlyCloudy: "⛅️",
-  Sunny: "☀️",
-  ThunderyHeavyRain: "🌩",
-  ThunderyShowers: "⛈",
-  ThunderySnowShowers: "⛈",
-  VeryCloudy: "☁️",
+  Unknown: "sparkles.svg",
+  Cloudy: "cloud.fog.svg",
+  Fog: "cloud.fog.svg",
+  HeavyRain: "cloud.heavyrain.svg",
+  HeavyShowers: "cloud.heavyrain.svg",
+  HeavySnow: "cloud.snow.svg",
+  HeavySnowShowers: "cloud.snow.svg",
+  LightRain: "cloud.rain.svg",
+  LightShowers: "cloud.rain.svg",
+  LightSleet: "cloud.sleet.svg",
+  LightSleetShowers: "cloud.sleet.svg",
+  LightSnow: "cloud.snow.svg",
+  LightSnowShowers: "cloud.snow.svg",
+  PartlyCloudy: "cloud.svg",
+  Sunny: "sun.max.svg",
+  ThunderyHeavyRain: "cloud.bolt.rain.svg",
+  ThunderyShowers: "cloud.bolt.rain.svg",
+  ThunderySnowShowers: "cloud.bolt.rain.svg",
+  VeryCloudy: "cloud.svg",
 };
 
-/*const WEATHER_SYMBOL_WIDTH_VTE: Record<string, number> = {
-    "✨": 2,
-    "☁️": 1,
-    "🌫": 2,
-    "🌧": 2,
-    "🌧": 2,
-    "❄️": 1,
-    "❄️": 1,
-    "🌦": 1,
-    "🌦": 1,
-    "🌧": 1,
-    "🌧": 1,
-    "🌨": 2,
-    "🌨": 2,
-    "⛅️": 2,
-    "☀️": 1,
-    "🌩": 2,
-    "⛈": 1,
-    "⛈": 1,
-    "☁️": 1,
-};*/
-
 export const WIND_DIRECTION = ["↓", "↙", "←", "↖", "↑", "↗", "→", "↘"];
-
-export const MOON_PHASES = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"];
 
 export const LOCALE = {
   af: "af_ZA",
@@ -173,3 +152,35 @@ export const LOCALE = {
   zh: "zh_TW",
   zu: "zu_ZA",
 };
+
+export enum WeatherIcons {
+  Area = "building.2.svg",
+  ArrowDown = "arrow.down.svg",
+  ArrowUp = "arrow.up.svg",
+  Cloud = "cloud.svg",
+  Coordinates = "mappin.svg",
+  Country = "map.svg",
+  FeelsLike = "thermometer.variable.and.figure.svg",
+  Fetched = "square.and.arrow.down.svg",
+  Humidity = "humidity.svg",
+  Pressure = "barometer.svg",
+  Moon = "moon.svg",
+  Moonrise = "moonrise.svg",
+  Moonset = "moonset.svg",
+  Observation = "clock.svg",
+  Rain = "drop.svg",
+  Region = "mappin.and.ellipse.svg",
+  Settings = "gear.svg",
+  Snow = "snowflake.svg",
+  Source = "link.svg",
+  Sun = "sun.max.svg",
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  SunHours = "clock.svg",
+  Sunrise = "sunrise.svg",
+  Sunset = "sunset.svg",
+  Temperature = "thermometer.medium.svg",
+  Thunder = "bolt.svg",
+  UVIndex = "rays.svg",
+  Visibility = "eye.svg",
+  Wind = "wind.svg",
+}

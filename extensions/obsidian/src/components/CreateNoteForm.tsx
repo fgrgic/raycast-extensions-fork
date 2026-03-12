@@ -1,81 +1,45 @@
-import { ActionPanel, Form, Action, useNavigation, getPreferenceValues, Keyboard } from "@raycast/api";
+import { ObsidianVault } from "@/obsidian";
+import { Action, ActionPanel, closeMainWindow, Form, getPreferenceValues, Keyboard, popToRoot } from "@raycast/api";
+import { invalidateNotesCache } from "../api/cache/cache.service";
+import { createNote, CreateNoteParams } from "../api/create-note";
+import { parseFolderActionsPreferences, parseTagsPreferences } from "../api/preferences/preferences.service";
+import { NoteFormPreferences } from "../utils/preferences";
 
-import NoteCreator from "../utils/NoteCreator";
-import { NoteFormPreferences, FormValue } from "../utils/interfaces";
+export function CreateNoteForm(props: { vault: ObsidianVault; showTitle: boolean }) {
+  const { vault, showTitle } = props;
 
-export function CreateNoteForm(props: { vaultPath: string }) {
-  const vaultPath = props.vaultPath;
-  const pref: NoteFormPreferences = getPreferenceValues();
-  const { pop } = useNavigation();
+  const pref = getPreferenceValues<NoteFormPreferences>();
+  const { prefTag, prefPath } = pref;
 
-  function folders() {
-    const folderString = pref.folderActions;
-    if (folderString) {
-      const folders = folderString
-        .split(",")
-        .filter((folder) => !!folder)
-        .map((folder: string) => folder.trim());
-      return folders;
-    }
-    return [];
+  const folderActions = parseFolderActionsPreferences(pref.folderActions);
+  const tags = parseTagsPreferences(pref.tags);
+  if (prefTag) {
+    tags.push(prefTag);
   }
 
-  function tags() {
-    const tagsString = pref.tags;
-    const prefTag = pref.prefTag;
-    if (!tagsString) {
-      if (prefTag) {
-        return [{ name: prefTag, key: prefTag }];
-      }
-      return [];
+  async function createNewNote(params: CreateNoteParams, path?: string) {
+    if (path) {
+      params.path = path;
     }
-    const tags = tagsString
-      .split(",")
-      .map((tag) => ({ name: tag.trim(), key: tag.trim() }))
-      .filter((tag) => !!tag);
-    if (prefTag) {
-      tags.push({ name: prefTag, key: prefTag });
-    }
-    return tags;
-  }
-
-  function prefTag(): string[] {
-    const prefTag = pref.prefTag;
-    if (prefTag) {
-      return [prefTag];
-    }
-    return [];
-  }
-
-  function prefPath(): string {
-    const prefPath = pref.prefPath;
-    if (prefPath) {
-      return prefPath;
-    }
-    return "";
-  }
-
-  function createNewNote(noteProps: FormValue, path: string | undefined = undefined) {
-    if (path !== undefined) {
-      noteProps.path = path;
-    }
-    const nc = new NoteCreator(noteProps, vaultPath, pref);
-    const saved = nc.createNote();
+    const saved = await createNote(vault, params);
     if (saved) {
-      pop();
+      // Invalidate cache so new note appears in lists
+      invalidateNotesCache(vault.path);
     }
+    popToRoot();
+    closeMainWindow();
   }
 
   return (
     <Form
-      navigationTitle={"Create Note"}
+      navigationTitle={showTitle ? "Create Note for " + vault.name : ""}
       actions={
         <ActionPanel>
           <Action.SubmitForm title="Create" onSubmit={createNewNote} />
-          {folders()?.map((folder, index) => (
+          {folderActions.map((folder, index) => (
             <Action.SubmitForm
               title={"Create in " + folder}
-              onSubmit={(props: FormValue) => createNewNote(props, folder)}
+              onSubmit={(props: CreateNoteParams) => createNewNote(props, folder)}
               key={index}
               shortcut={{ modifiers: ["shift", "cmd"], key: index.toString() as Keyboard.KeyEquivalent }}
             ></Action.SubmitForm>
@@ -83,14 +47,30 @@ export function CreateNoteForm(props: { vaultPath: string }) {
         </ActionPanel>
       }
     >
-      <Form.TextField title="Name" id="name" placeholder="Name of note" />
-      <Form.TextField title="Path" id="path" defaultValue={prefPath()} placeholder="path/to/note (optional)" />
-      <Form.TagPicker id="tags" title="Tags" defaultValue={prefTag()}>
-        {tags()?.map((tag) => (
-          <Form.TagPicker.Item value={tag.name.toLowerCase()} title={tag.name} key={tag.key} />
+      <Form.TextField
+        title="Name"
+        id="name"
+        placeholder="Name of note"
+        defaultValue={pref.fillFormWithDefaults ? pref.prefNoteName : ""}
+      />
+      <Form.TextField
+        title="Path"
+        id="path"
+        defaultValue={prefPath ? prefPath : ""}
+        placeholder="path/to/note (optional)"
+      />
+      <Form.TagPicker id="tags" title="Tags" defaultValue={prefTag ? [prefTag] : []}>
+        {tags.map((tag, index) => (
+          <Form.TagPicker.Item value={tag} title={tag} key={index} />
         ))}
       </Form.TagPicker>
-      <Form.TextArea title="Content:" id="content" placeholder={"Text"} />
+      <Form.TextArea
+        title="Content:"
+        id="content"
+        placeholder={"Text"}
+        defaultValue={pref.fillFormWithDefaults ? pref.prefNoteContent ?? "" : ""}
+        autoFocus={pref.focusContentArea}
+      />
     </Form>
   );
 }

@@ -10,14 +10,14 @@ The source code of the example can be found [here](https://github.com/raycast/ex
 
 Who doesn't like a good morning read on [Hacker News](https://news.ycombinator.com) with a warm coffee?! In this example, we create a simple list with the top stories on the frontpage.
 
-![Example: Read frontpage of Hacker News](../.gitbook/assets/example-hacker-news.png)
+![Example: Read frontpage of Hacker News](../.gitbook/assets/example-hacker-news.webp)
 
 ## Load top stories
 
 First, let's get the latest top stories. For this we use a [RSS feed](https://hnrss.org):
 
 ```typescript
-import { List } from "@raycast/api";
+import { Action, ActionPanel, List, showToast, Toast, Keyboard } from "@raycast/api";
 import { useEffect, useState } from "react";
 import Parser from "rss-parser";
 
@@ -34,14 +34,11 @@ export default function Command() {
   useEffect(() => {
     async function fetchStories() {
       try {
-        const feed = await parser.parseURL(
-          "https://hnrss.org/frontpage?description=0&count=25"
-        );
+        const feed = await parser.parseURL("https://hnrss.org/frontpage?description=0&count=25");
         setState({ items: feed.items });
       } catch (error) {
         setState({
-          error:
-            error instanceof Error ? error : new Error("Something went wrong"),
+          error: error instanceof Error ? error : new Error("Something went wrong"),
         });
       }
     }
@@ -57,7 +54,7 @@ export default function Command() {
 
 Breaking this down:
 
-- We use a third-party dependency to parse the RSS feed and intially the parser.
+- We use a third-party dependency to parse the RSS feed and initially the parser.
 - We define our command state as a TypeScript interface.
 - We use [React's `useEffect`](https://reactjs.org/docs/hooks-effect.html) hook to parse the RSS feed after the command did mount.
 - We print the top stories to the console.
@@ -78,7 +75,7 @@ function StoryListItem(props: { item: Parser.Item; index: number }) {
       icon={icon}
       title={props.item.title ?? "No title"}
       subtitle={props.item.creator}
-      accessoryTitle={`👍  ${points}    💬  ${comments}`}
+      accessories={[{ text: `👍 ${points}` }, { text: `💬  ${comments}` }]}
     />
   );
 }
@@ -139,19 +136,14 @@ function Actions(props: { item: Parser.Item }) {
     <ActionPanel title={props.item.title}>
       <ActionPanel.Section>
         {props.item.link && <Action.OpenInBrowser url={props.item.link} />}
-        {props.item.guid && (
-          <Action.OpenInBrowser
-            url={props.item.guid}
-            title="Open Comments in Browser"
-          />
-        )}
+        {props.item.guid && <Action.OpenInBrowser url={props.item.guid} title="Open Comments in Browser" />}
       </ActionPanel.Section>
       <ActionPanel.Section>
         {props.item.link && (
           <Action.CopyToClipboard
             content={props.item.link}
             title="Copy Link"
-            shortcut={{ modifiers: ["cmd"], key: "." }}
+            shortcut={Keyboard.Shortcut.Common.Copy}
           />
         )}
       </ActionPanel.Section>
@@ -171,7 +163,7 @@ function StoryListItem(props: { item: Parser.Item; index: number }) {
       icon={icon}
       title={props.item.title ?? "No title"}
       subtitle={props.item.creator}
-      accessoryTitle={`👍  ${points}    💬  ${comments}`}
+      accessories={[{ text: `👍 ${points}` }, { text: `💬  ${comments}` }]}
       // Wire up actions
       actions={<Actions item={props.item} />}
     />
@@ -203,4 +195,4 @@ export default function Command() {
 
 ## Wrapping up
 
-That's it, you have a working extension to read the fronpage of Hacker News. As next steps, you can add another command to show the jobs feed or add an action to copy a Markdown formatted link.
+That's it, you have a working extension to read the frontpage of Hacker News. As next steps, you can add another command to show the jobs feed or add an action to copy a Markdown formatted link.

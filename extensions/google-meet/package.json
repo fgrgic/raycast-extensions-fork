@@ -5,34 +5,69 @@
   "description": "Start a Google Meet directly from Raycast",
   "icon": "google-meet-icon.png",
   "author": "vitoorgomes",
+  "contributors": [
+    "hughlaw",
+    "iwex",
+    "nexxai"
+  ],
   "license": "MIT",
   "commands": [
     {
-      "name": "index",
+      "name": "default-profile",
       "title": "Create Meet",
       "subtitle": "Google Meet",
-      "description": "Creates a new meeting room with your default browser",
+      "description": "Creates a new meeting room with your default browser and copy the link to your clipboard.",
       "mode": "no-view"
+    },
+    {
+      "name": "manual-profile",
+      "title": "Create Meet with Specified Profile",
+      "subtitle": "Google Meet",
+      "description": "Creates a new meeting room with your default browser and copy the link to your clipboard.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "title": "Set preferred browser",
+      "description": "This allows to override the configuration from the default browser to a specific one when creating the meet. Remember, you have to choose a valid browser",
+      "name": "preferredBrowser",
+      "type": "appPicker",
+      "required": false
+    },
+    {
+      "title": "Set timeout (ms) before copying link",
+      "description": "This allows to override the configuration from the default timeout to a specific one in milliseconds when creating the meet",
+      "name": "timeout",
+      "type": "textfield",
+      "required": false,
+      "default": "500"
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.29.1"
+    "@raycast/api": "^1.104.6",
+    "@raycast/utils": "^2.2.2",
+    "run-applescript": "^7.1.0"
   },
   "devDependencies": {
-    "@types/node": "~16.10.0",
-    "@types/react": "^17.0.28",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/parser": "^5.0.0",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.3.0",
-    "prettier": "^2.5.1",
-    "react-devtools": "^4.19.2",
-    "typescript": "^4.4.3"
+    "@raycast/eslint-config": "^2.1.1",
+    "@types/node": "~25.2.3",
+    "@types/react": "^19.2.14",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "build": "ray build -e dist",
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
-    "lint": "ray lint"
-  }
+    "lint": "ray lint",
+    "publish": "npx @raycast/api@latest publish"
+  },
+  "platforms": [
+    "macOS"
+  ]
 }
