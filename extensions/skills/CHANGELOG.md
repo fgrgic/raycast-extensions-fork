@@ -1,4 +1,14 @@
-# Changelog
+# Skills Changelog
+
+## [Fix Homebrew `node@` Resolution and add Custom `npx` Validation] - 2026-04-23
+
+- Detect versioned Homebrew Node formula bins like `/opt/homebrew/opt/node@24/bin` so the Skills CLI can find `node` when `npx` comes from Homebrew, while still preferring Node installs from version managers first
+- Validate the optional "Custom npx Path" override before running the CLI and show a clearer error detail when the configured path is incorrect
+
+## [Fix Silent Auto-Update on Load] - 2026-04-21
+
+- Stop silently auto-updating outdated skills when opening Manage Skills
+- Fix the orange "Update available" highlight that stopped appearing for outdated skills
 
 ## [Show Installed Badge in Search Results] - 2026-04-20
 
